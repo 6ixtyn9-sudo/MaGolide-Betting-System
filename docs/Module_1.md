@@ -1228,7 +1228,10 @@ function createCoreSheets_(ss) {
     'Stats_Tier2_Simulation',
     'Stats_Tier2_Optimization',
     'Config_Tier2',
-    'Config_Tier2_Proposals'
+    'Config_Tier2_Proposals',
+
+    // Phase 4 — identity ledger (Assayer / Mothership joins)
+    'Satellite_Identity'
   ];
 
   let createdCount = 0;
@@ -1246,6 +1249,25 @@ function createCoreSheets_(ss) {
   Logger.log('Core Sheets Summary: Created=' + createdCount + ', Already Existed=' + skippedCount);
 
   _initialiseTierConfigs_(ss);
+
+  var sid = ss.getSheetByName('Satellite_Identity');
+  if (sid && sid.getLastRow() === 0) {
+    sid.getRange(1, 1, 1, 5).setValues([[
+      'Satellite_Key', 'Display_Name', 'League', 'Notes', 'Updated_UTC'
+    ]]);
+    sid.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#fff2cc');
+    Logger.log('Satellite_Identity: seeded header row');
+  }
+
+  if (typeof ensureResultsCleanCanonicalHeaders_ === 'function') {
+    try {
+      ensureResultsCleanCanonicalHeaders_(ss);
+    } catch (eR) {
+      Logger.log('ensureResultsCleanCanonicalHeaders_: ' + eR.message);
+    }
+  }
+
+  Logger.log('[PHASE 4 COMPLETE] Satellite_Identity sheet + ResultsClean canonical header merge (append-only)');
 }
 
 /**
@@ -1389,6 +1411,9 @@ function _initialiseTierConfigs_(ss) {
     ['ou_sigma_floor', 6.0, 'O/U sigma floor'],
     ['ou_sigma_scale', 1.0, 'O/U sigma scaling'],
     ['ou_american_odds', -110, 'O/U American odds baseline'],
+    ['breakeven_prob', 0.5238, 'O/U break-even implied prob (merged into unified OU config)'],
+    ['juice', -110, 'O/U American juice (merged into unified OU config)'],
+    ['fallback_sd', 8.5, 'Default sigma fallback when league SD missing'],
     ['ou_model_error', 4.0, 'O/U model error estimate'],
     ['ou_prob_temp', 1.15, 'O/U probability temperature'],
     ['ou_use_effn', 'FALSE', 'Use effective N for O/U'],

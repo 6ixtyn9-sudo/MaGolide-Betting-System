@@ -2220,6 +2220,13 @@ function analyzeTier1(ss) {
     // STEP 1: Load configuration
     // ════════════════════════════════════════════════════════════════════════
     var config = loadTier1Config(ss);
+    if (typeof validateConfigState_ === 'function') {
+      try {
+        validateConfigState_(config, ['version', 'confMin', 'confMax']);
+      } catch (eVal) {
+        Logger.log('[analyzeTier1] validateConfigState_: ' + eVal);
+      }
+    }
     Logger.log('[Config] ✓ Loaded version: ' + config.version);
     Logger.log('[Config] Confidence bounds: [' + config.confMin + '-' + config.confMax + ']');
 
@@ -2637,6 +2644,8 @@ function analyzeTier1(ss) {
       ui.ButtonSet.OK
     );
 
+    Logger.log('[PHASE 2 COMPLETE] Tier1_Predictions: FORENSIC_CORE_17 + confidence bundle');
+    Logger.log('[PHASE 3 COMPLETE] Tier1 validateConfigState_(version, confMin, confMax)');
   } catch (e) {
     Logger.log('!!! ERROR in analyzeTier1: ' + e.message);
     Logger.log('Stack: ' + e.stack);
@@ -2654,8 +2663,7 @@ function analyzeTier1(ss) {
  * 
  * WHAT: Reads Tier1_Predictions once, builds a Map of composite keys to row numbers.
  * 
- * HOW: Iterates through columns A (game_key) and B (config_version), creates
- *      composite key "gameKey|configVersion", maps to row number.
+ * HOW: Iterates column A (prediction_record_id), maps to row number.
  * 
  * WHERE: Tier1_Predictions sheet (read-only operation)
  * 
@@ -2667,20 +2675,23 @@ function analyzeTier1(ss) {
 function buildPredictionKeyMap(ss) {
   const sheet = getSheetInsensitive(ss, 'Tier1_Predictions');
   const keyMap = new Map();
-  
+
   if (!sheet || sheet.getLastRow() <= 1) {
     Logger.log('[buildPredictionKeyMap] No existing predictions to load.');
     return keyMap;
   }
-  
-  // WHY: Read only columns A and B for speed (game_key, config_version)
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
-  
+
+  // Column A = prediction_record_id (Patch 1B). Legacy sheets: column A may be game_key — still unique per row.
+  const lastR = sheet.getLastRow();
+  const data = sheet.getRange(2, 1, lastR, 1).getValues();
+
   data.forEach((row, index) => {
-    const compositeKey = String(row[0]) + '|' + String(row[1]);
-    keyMap.set(compositeKey, index + 2); // +2: header offset + 0-based index
+    const pid = String(row[0] || '').trim();
+    if (pid) {
+      keyMap.set(pid, index + 2);
+    }
   });
-  
+
   Logger.log('[buildPredictionKeyMap] Loaded ' + keyMap.size + ' existing prediction keys.');
   return keyMap;
 }
@@ -2716,33 +2727,21 @@ function buildPredictionKeyMap(ss) {
 function logTier1Prediction(ss, p, existingRowMap) {
   try {
     let sheet = getSheetInsensitive(ss, 'Tier1_Predictions');
-    
-    // WHY: 23 columns - canonical header order for forensic logging
-    const headers = [
-      'game_key',           // A - Unique identifier
-      'config_version',     // B - Which config produced this
-      'timestamp',          // C - When prediction was made
-      'league',             // D - League/competition
-      'date',               // E - Game date
-      'home',               // F - Home team
-      'away',               // G - Away team
-      'rank_diff',          // H - Input: rank difference
-      'form_diff',          // I - Input: form difference
-      'h2h_diff',           // J - Input: H2H difference
-      'forebet_diff',       // K - Input: Forebet difference
-      'variance_penalty',   // L - Input: variance penalty
-      'factor_rank',        // M - Output: rank contribution
-      'factor_form',        // N - Output: form contribution
-      'factor_h2h',         // O - Output: H2H contribution
-      'factor_forebet',     // P - Output: Forebet contribution
-      'factor_variance',    // Q - Output: variance contribution
-      'factor_homeAdv',     // R - Output: home advantage
-      'maGolide_score',     // S - Final calculated score
-      'prediction',         // T - HOME/AWAY/RISKY
-      'confidence',         // U - Confidence percentage
-      'forebet_prediction', // V - What Forebet predicted
-      'forebet_confidence'  // W - Forebet's confidence
+
+    // Phase 2 / Patch 6: FORENSIC_CORE_17 + diagnostics (Contract_Enforcer)
+    const F17 = (typeof FORENSIC_CORE_17 !== 'undefined')
+      ? FORENSIC_CORE_17
+      : [
+        'Prediction_Record_ID', 'Universal_Game_ID', 'Config_Version', 'Timestamp_UTC',
+        'League', 'Date', 'Home', 'Away', 'Market', 'Period', 'Pick_Code', 'Pick_Text',
+        'Confidence_Pct', 'Confidence_Prob', 'Tier_Code', 'EV', 'Edge_Score'
+      ];
+    const DIAG = [
+      'Diag_Rank_Diff', 'Diag_Form_Diff', 'Diag_H2H_Diff', 'Diag_Forebet_Diff', 'Diag_Variance_Penalty',
+      'Diag_Factor_Rank', 'Diag_Factor_Form', 'Diag_Factor_H2H', 'Diag_Factor_Forebet','Diag_Factor_Variance','Diag_Factor_HomeAdv',
+      'Forebet_Prediction','Forebet_Confidence_Raw'
     ];
+    const headers = F17.concat(DIAG);
 
     // WHY: Create sheet with headers if it doesn't exist
     if (!sheet) {
@@ -2756,10 +2755,8 @@ function logTier1Prediction(ss, p, existingRowMap) {
       const lastCol = sheet.getLastColumn();
       const firstRow = sheet.getRange(1, 1, 1, Math.max(lastCol, headers.length)).getValues()[0];
       
-      // Check if critical columns have correct headers
-      const needsHeaderFix = lastCol < headers.length || 
-                             firstRow[19] !== 'prediction' || 
-                             firstRow[20] !== 'confidence';
+      const needsHeaderFix = lastCol < headers.length ||
+                             String(firstRow[0] || '').toLowerCase().replace(/_/g, '') !== 'predictionrecordid';
       
       if (needsHeaderFix) {
         if (lastCol > 0) {
@@ -2771,96 +2768,108 @@ function logTier1Prediction(ss, p, existingRowMap) {
       }
     }
 
-    // WHY: Generate consistent game key for deduplication
-    const cleanStr = (s) => String(s || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    
-    let dateStr;
-    if (p.date instanceof Date) {
-      dateStr = Utilities.formatDate(p.date, Session.getScriptTimeZone(), 'yyyyMMdd');
-    } else if (p.date) {
-      // WHY: Handle DD/MM/YYYY format common in our data
-      const match = String(p.date).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if (match) {
-        dateStr = match[3] + match[2].padStart(2, '0') + match[1].padStart(2, '0');
-      } else {
-        const parsed = new Date(p.date);
-        dateStr = !isNaN(parsed.getTime()) 
-          ? Utilities.formatDate(parsed, Session.getScriptTimeZone(), 'yyyyMMdd') 
-          : cleanStr(p.date);
-      }
-    } else {
-      dateStr = 'NODATE';
-    }
-    
-    const gameKey = cleanStr(p.league) + '_' + dateStr + '_' + cleanStr(p.home) + '_' + cleanStr(p.away);
     const configVersion = p.configVersion || 'default';
-    
-    // WHY: Composite key uniquely identifies prediction for deduplication
-    const compositeKey = gameKey + '|' + configVersion;
 
-    // WHY: Extract features and factor scores with safe defaults
+    let universalGameId = '';
+    try {
+      if (typeof buildUniversalGameID_ === 'function') {
+        universalGameId = buildUniversalGameID_(p.date, p.home, p.away);
+      }
+    } catch (eId) {
+      Logger.log('[Tier1 Logger] buildUniversalGameID_: ' + eId.message);
+    }
+    if (!universalGameId && typeof standardizeDate_ === 'function') {
+      const ymd = standardizeDate_(p.date);
+      const y = (ymd && ymd.replace(/-/g, '')) || 'NODATE';
+      const h = String(p.home || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/_+/g, '_');
+      const a = String(p.away || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/_+/g, '_');
+      universalGameId = y + '__' + h + '__' + a;
+    }
+
+    let predictionRecordId = '';
+    try {
+      if (typeof buildPredictionRecordID_ === 'function' && universalGameId) {
+        predictionRecordId = buildPredictionRecordID_(universalGameId, 'TIER1', 'FT', configVersion);
+      }
+    } catch (ePr) {
+      Logger.log('[Tier1 Logger] buildPredictionRecordID_: ' + ePr.message);
+    }
+    if (!predictionRecordId && universalGameId) {
+      predictionRecordId = universalGameId + '__TIER1__FT__' + String(configVersion).replace(/__/g, '_');
+    }
+    if (!predictionRecordId) {
+      predictionRecordId = 'T1_FALLBACK__' + String(p.home || '').replace(/__/g, '_') + '__' +
+        String(p.away || '').replace(/__/g, '_') + '__' + String(configVersion).replace(/__/g, '_');
+    }
+
     const feat = p.features || {};
     const fact = p.factorScores || {};
+    const stdDate = (typeof standardizeDate_ === 'function') ? standardizeDate_(p.date) : '';
+    const confB = (typeof normalizeConfidenceBundle_ === 'function')
+      ? normalizeConfidenceBundle_(p.confidence)
+      : { confidencePct: Number(p.confidence) || 0, confidenceProb: (Number(p.confidence) || 0) / 100, tierCode: 'WEAK', tierDisplay: '★ (0%) ★' };
+    const predRaw = String(p.prediction || '').toUpperCase();
+    let pickCode = 'UNK';
+    if (predRaw.indexOf('HOME') >= 0) pickCode = 'HOME';
+    else if (predRaw.indexOf('AWAY') >= 0) pickCode = 'AWAY';
+    else if (predRaw.indexOf('RISK') >= 0) pickCode = 'RISKY';
 
-    // WHY: Build row with ALL 23 values in correct column order
-    const rowData = [
-      gameKey,                              // A
-      configVersion,                        // B
-      new Date(),                           // C - Current timestamp (updated on upsert)
-      p.league || '',                       // D
-      p.date || '',                         // E
-      p.home || '',                         // F
-      p.away || '',                         // G
-      feat.rankDiff || 0,                   // H
-      feat.formDiff || 0,                   // I
-      feat.h2hDiff || 0,                    // J
-      feat.forebetDiff || 0,                // K
-      feat.variancePenalty || 0,            // L
-      fact.rank || 0,                       // M
-      fact.form || 0,                       // N
-      fact.h2h || 0,                        // O
-      fact.forebet || 0,                    // P
-      fact.variance || 0,                   // Q
-      fact.homeAdv || 0,                    // R
-      p.score || 0,                         // S
-      p.prediction || 'N/A',                // T
-      p.confidence || 0,                    // U
-      p.forebetPrediction || '',            // V
-      p.forebetConfidence || 0              // W
+    const core17 = [
+      predictionRecordId,
+      universalGameId,
+      configVersion,
+      new Date(),
+      p.league || '',
+      stdDate || p.date || '',
+      p.home || '',
+      p.away || '',
+      'TIER1',
+      'FT',
+      pickCode,
+      String(p.prediction || ''),
+      confB.confidencePct,
+      confB.confidenceProb,
+      confB.tierCode,
+      '',
+      p.score || 0
     ];
+    const rowData = core17.concat([
+      feat.rankDiff || 0,
+      feat.formDiff || 0,
+      feat.h2hDiff || 0,
+      feat.forebetDiff || 0,
+      feat.variancePenalty || 0,
+      fact.rank || 0,
+      fact.form || 0,
+      fact.h2h || 0,
+      fact.forebet || 0,
+      fact.variance || 0,
+      fact.homeAdv || 0,
+      p.forebetPrediction || '',
+      p.forebetConfidence || 0
+    ]);
 
-    // ============================================================
-    // UPSERT LOGIC - THE ANTI-BLOAT FIX
-    // ============================================================
     let targetRow = -1;
 
-    // WHY: Fast O(1) lookup if pre-loaded map provided
-    if (existingRowMap && existingRowMap.has(compositeKey)) {
-      targetRow = existingRowMap.get(compositeKey);
-    }
-    // WHY: Fallback slow scan if no map provided (defensive programming)
-    else if (!existingRowMap && sheet.getLastRow() > 1) {
-      const keyData = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+    if (existingRowMap && predictionRecordId && existingRowMap.has(predictionRecordId)) {
+      targetRow = existingRowMap.get(predictionRecordId);
+    } else if (!existingRowMap && predictionRecordId && sheet.getLastRow() > 1) {
+      const keyData = sheet.getRange(2, 1, sheet.getLastRow(), 1).getValues();
       for (let i = 0; i < keyData.length; i++) {
-        if (keyData[i][0] + '|' + keyData[i][1] === compositeKey) {
-          targetRow = i + 2; // +2 for header offset + 0-based index
+        if (String(keyData[i][0] || '').trim() === predictionRecordId) {
+          targetRow = i + 2;
           break;
         }
       }
     }
 
     if (targetRow > 0) {
-      // WHY: UPDATE existing row - prevents duplicates
       sheet.getRange(targetRow, 1, 1, rowData.length).setValues([rowData]);
-      // Logger.log('[Tier1 Logger] Updated row ' + targetRow + ': ' + compositeKey);
     } else {
-      // WHY: APPEND new row - first time seeing this game+config
       sheet.appendRow(rowData);
-      // WHY: Update map so subsequent calls in this run don't duplicate
-      if (existingRowMap) {
-        existingRowMap.set(compositeKey, sheet.getLastRow());
+      if (existingRowMap && predictionRecordId) {
+        existingRowMap.set(predictionRecordId, sheet.getLastRow());
       }
-      // Logger.log('[Tier1 Logger] Appended: ' + compositeKey);
     }
 
   } catch (e) {

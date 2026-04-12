@@ -1715,6 +1715,13 @@ function predictQuarters_Tier2(ss) {
   // Config + thresholds
   // ═══════════════════════════════════════════════════════════════
   var config = loadTier2Config(ss);
+  if (typeof validateConfigState_ === 'function') {
+    try {
+      validateConfigState_(config, ['threshold', 'strong_target', 'medium_target', 'even_target']);
+    } catch (eCfg) {
+      Logger.log('[predictQuarters_Tier2] validateConfigState_: ' + eCfg);
+    }
+  }
 
   // Targets used by your tier-aligned confidence mapping
   var TARGET_EVEN = _clamp_(_num_(config.even_target, 0.55), 0.50, 0.80);
@@ -2126,7 +2133,8 @@ function predictQuarters_Tier2(ss) {
             dynamicThresholds: thrUse,
             thresholdSource: learnedThresholds.thresholdSource,
             confidence: confPct,
-            edgeScore: edgeScore
+            edgeScore: edgeScore,
+            predictionText: predText
           });
         } catch (e3) {}
       }
@@ -2163,6 +2171,8 @@ function predictQuarters_Tier2(ss) {
              ', WEAK=' + stats.byTier.WEAK +
              ', EVEN=' + stats.byTier.EVEN);
   Logger.log('Paths: ' + JSON.stringify(stats.paths));
+  Logger.log('[PHASE 2 COMPLETE] Tier2_Log: FORENSIC_CORE_17 + Tier2 diagnostics');
+  Logger.log('[PHASE 3 COMPLETE] Tier2 validateConfigState_(threshold, strong_target, medium_target, even_target, config_version)');
 
   ui.alert(
     '✅ Tier 2 v3.3 (Anti-Flatline)',
@@ -2705,43 +2715,7 @@ var OU_CONFIG = {
 // HELPER FUNCTIONS (Self-contained)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Create header map from row (case-insensitive, underscore-flexible)
- * @param {Array} headerRow - First row of sheet data
- * @returns {Object} Map of column name -> index
- */
-function createHeaderMap(headerRow) {
-  var map = {};
-  for (var i = 0; i < headerRow.length; i++) {
-    var raw = String(headerRow[i] || '').trim();
-    var key = raw.toLowerCase().replace(/[\s_-]+/g, '_');
-    map[key] = i;
-    // Also store without underscores for flexible matching
-    var keyNoUnderscore = key.replace(/_/g, '');
-    if (keyNoUnderscore !== key) {
-      map[keyNoUnderscore] = i;
-    }
-  }
-  return map;
-}
-
-/**
- * Get sheet by name (case-insensitive)
- * @param {Spreadsheet} ss
- * @param {string} name
- * @returns {Sheet|null}
- */
-function getSheetInsensitive(ss, name) {
-  if (!ss || !name) return null;
-  var targetLower = String(name).toLowerCase();
-  var sheets = ss.getSheets();
-  for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getName().toLowerCase() === targetLower) {
-      return sheets[i];
-    }
-  }
-  return null;
-}
+// createHeaderMap / getSheetInsensitive: Module_00_Contract_Enforcer (Patch 8 — no duplicate defs).
 
 /**
  * Detect quarter column indices with separate home/away columns
@@ -4042,6 +4016,10 @@ var UNIFIED_OU_CONFIG = {
   
   // Probability thresholds
   BREAKEVEN_PROB: 0.5238,  // -110 juice
+  /** American odds baseline (merged from Config_Tier2 "juice" when present) */
+  JUICE: -110,
+  /** Default sigma fallback when league SD missing (Phase 3 — sheet override key: fallback_sd) */
+  fallbackSd: 8.5,
   DEFAULT_EDGE: 0.04,
   MIN_EXPECTED_EV: 0.005,
   PUSH_TOLERANCE: 0.5,
@@ -4133,13 +4111,24 @@ function predictQuarters_Tier2_OU(ss, options) {
     ? options.gameContext
     : ((typeof t2_getSharedGameContext_ === 'function') ? t2_getSharedGameContext_() : null);
 
+  var OU_CFG = (typeof mergeUnifiedOuConfigWithSheet_ === 'function')
+    ? mergeUnifiedOuConfigWithSheet_(ss, UNIFIED_OU_CONFIG)
+    : UNIFIED_OU_CONFIG;
+  if (typeof validateConfigState_ === 'function') {
+    try {
+      validateConfigState_(OU_CFG, ['VERSION', 'BREAKEVEN_PROB', 'JUICE', 'fallbackSd']);
+    } catch (eVal) {
+      Logger.log('[predictQuarters_Tier2_OU] validateConfigState_: ' + eVal);
+    }
+  }
+
   // Game key helper — matches accumulator convention: (home + ' vs ' + away).toLowerCase()
   // All downstream patches (4-7) must use the same keying.
   function _ouGameKey_(home, away) {
     return (String(home || '').trim() + ' vs ' + String(away || '').trim()).toLowerCase();
   }
 
-  var VERSION = UNIFIED_OU_CONFIG.VERSION + '-PATCHED-R3';
+  var VERSION = OU_CFG.VERSION + '-PATCHED-R3';
   var showUI = options.showUI !== false;
   var ui = showUI ? SpreadsheetApp.getUi() : null;
 
@@ -4208,9 +4197,9 @@ function predictQuarters_Tier2_OU(ss, options) {
   var cfg = _loadConfig(ss);
   var debug = cfg.debug_ou_logging === true || String(cfg.debug_ou_logging).toLowerCase() === 'true';
 
-  var EDGE = parseFloat(cfg.ou_edge_threshold) || UNIFIED_OU_CONFIG.DEFAULT_EDGE;
-  var MIN_EV = parseFloat(cfg.ou_min_ev) || UNIFIED_OU_CONFIG.MIN_EXPECTED_EV;
-  var CONF_SCALE = parseFloat(cfg.ou_confidence_scale) || UNIFIED_OU_CONFIG.CONFIDENCE_SCALE;
+  var EDGE = parseFloat(cfg.ou_edge_threshold) || OU_CFG.DEFAULT_EDGE;
+  var MIN_EV = parseFloat(cfg.ou_min_ev) || OU_CFG.MIN_EXPECTED_EV;
+  var CONF_SCALE = parseFloat(cfg.ou_confidence_scale) || OU_CFG.CONFIDENCE_SCALE;
 
   Logger.log('[Config] Edge threshold: ' + (EDGE * 100).toFixed(1) + '%');
   Logger.log('[Config] Min EV: ' + (MIN_EV * 100).toFixed(2) + '%');
@@ -4271,7 +4260,7 @@ function predictQuarters_Tier2_OU(ss, options) {
   // ═══════════════════════════════════════════════════════════════════════════
   // PROCESSING VARIABLES
   // ═══════════════════════════════════════════════════════════════════════════
-  var quarters = UNIFIED_OU_CONFIG.QUARTERS;
+  var quarters = OU_CFG.QUARTERS;
   var stats = {
     games: 0,
     picks: 0,
@@ -4393,7 +4382,7 @@ function predictQuarters_Tier2_OU(ss, options) {
 
       if (!model) {
         if (colPick !== undefined) row[colPick] = '';
-        rowColors.push(UNIFIED_OU_CONFIG.COLORS.na);
+        rowColors.push(OU_CFG.COLORS.na);
 
         // ─── R4-PATCH2: Record explicit null so HQ knows model was tried ───
         if (gcGame && gcGame.ouPredictions) {
@@ -4425,7 +4414,7 @@ function predictQuarters_Tier2_OU(ss, options) {
 
       if (isBayesian) {
         bayesianUsedThisGame = true;
-        var prior = UNIFIED_OU_CONFIG.PRIORS[Q] || UNIFIED_OU_CONFIG.PRIORS.default;
+        var prior = OU_CFG.PRIORS[Q] || OU_CFG.PRIORS.default;
         model.mu = model.mu * sampleConf + prior.mean * (1 - sampleConf);
         model.sigma = model.sigma * sampleConf + prior.sd * (1 - sampleConf);
       }
@@ -4498,7 +4487,7 @@ function predictQuarters_Tier2_OU(ss, options) {
       if (!isFinite(bookLine)) {
         var est = _roundHalf(model.mu);
         if (colPick !== undefined) row[colPick] = 'EST ' + est.toFixed(1);
-        rowColors.push(isBayesian ? UNIFIED_OU_CONFIG.COLORS.bayesian : UNIFIED_OU_CONFIG.COLORS.estimate);
+        rowColors.push(isBayesian ? OU_CFG.COLORS.bayesian : OU_CFG.COLORS.estimate);
         continue;
       }
 
@@ -4507,7 +4496,7 @@ function predictQuarters_Tier2_OU(ss, options) {
 
       if (!scored || !scored.play) {
         if (colPick !== undefined) row[colPick] = '';
-        rowColors.push(UNIFIED_OU_CONFIG.COLORS.pass);
+        rowColors.push(OU_CFG.COLORS.pass);
         stats.byTier.PASS++;
         continue;
       }
@@ -4526,7 +4515,7 @@ function predictQuarters_Tier2_OU(ss, options) {
       if (colEV !== undefined) row[colEV] = scored.ev.toFixed(4);
       if (colEdge !== undefined) row[colEdge] = scored.edge.toFixed(4);
       if (colPush !== undefined) row[colPush] = (scored.pPush * 100).toFixed(1) + '%';
-      if (colTier !== undefined) row[colTier] = scored.tier + ' ' + UNIFIED_OU_CONFIG.TIERS[scored.tier].symbol;
+      if (colTier !== undefined) row[colTier] = scored.tier + ' ' + OU_CFG.TIERS[scored.tier].symbol;
 
       // Track best for game
       if (scored.edgeScore > gameMaxEdge) {
@@ -4658,6 +4647,8 @@ function predictQuarters_Tier2_OU(ss, options) {
   _safeToast(ss, msg, 'Unified ' + VERSION, 5);
 
   Logger.log('[COMPLETE] ' + msg);
+  Logger.log('[PHASE 2 COMPLETE] OU_Log: FORENSIC_CORE_17 + O/U diagnostics');
+  Logger.log('[PHASE 3 COMPLETE] OU_CFG merge (Config_Tier2) + validateConfigState_(VERSION, BREAKEVEN_PROB, JUICE, fallbackSd)');
 
   return {
     games: stats.games,
@@ -4791,11 +4782,11 @@ function _blendWithForebet(modelMu, forebetMu, weight) {
 }
 
 function _calcSampleConfidence(n, scale) {
-  if (n === 0) return UNIFIED_OU_CONFIG.MIN_CONFIDENCE;
-  var conf = UNIFIED_OU_CONFIG.MIN_CONFIDENCE +
-             (UNIFIED_OU_CONFIG.MAX_CONFIDENCE - UNIFIED_OU_CONFIG.MIN_CONFIDENCE) *
+  if (n === 0) return OU_CFG.MIN_CONFIDENCE;
+  var conf = OU_CFG.MIN_CONFIDENCE +
+             (OU_CFG.MAX_CONFIDENCE - OU_CFG.MIN_CONFIDENCE) *
              (1 - Math.exp(-n / scale));
-  return Math.min(UNIFIED_OU_CONFIG.MAX_CONFIDENCE, conf);
+  return Math.min(OU_CFG.MAX_CONFIDENCE, conf);
 }
 
 function _parseBookLine(row, h, qk) {
@@ -4820,7 +4811,7 @@ function _predictQuarterTotal(home, away, Q, cache, cfg) {
   }
   
   // Fallback: use priors
-  var prior = UNIFIED_OU_CONFIG.PRIORS[Q] || UNIFIED_OU_CONFIG.PRIORS.default;
+  var prior = OU_CFG.PRIORS[Q] || OU_CFG.PRIORS.default;
   return {
     mu: prior.mean,
     sigma: prior.sd,
@@ -4861,7 +4852,7 @@ function _scoreOverUnderPick(model, bookLine, cfg, sampleConf) {
   
   var minEV = parseFloat(cfg.ou_min_ev) || 0.005;
   
-  if (bestProb < UNIFIED_OU_CONFIG.BREAKEVEN_PROB || bestEV < minEV) {
+  if (bestProb < OU_CFG.BREAKEVEN_PROB || bestEV < minEV) {
     return null;
   }
   
@@ -4874,7 +4865,7 @@ function _scoreOverUnderPick(model, bookLine, cfg, sampleConf) {
   return {
     play: true,
     direction: direction,
-    text: direction + ' ' + bookLine.toFixed(1) + ' ' + UNIFIED_OU_CONFIG.TIERS[tier].symbol,
+    text: direction + ' ' + bookLine.toFixed(1) + ' ' + OU_CFG.TIERS[tier].symbol,
     confPct: confPct,
     ev: bestEV,
     edge: edge,
@@ -4885,7 +4876,7 @@ function _scoreOverUnderPick(model, bookLine, cfg, sampleConf) {
 }
 
 function _assignTier(confPct, ev) {
-  var tiers = UNIFIED_OU_CONFIG.TIERS;
+  var tiers = OU_CFG.TIERS;
   if (confPct >= tiers.ELITE.minConf && ev >= tiers.ELITE.minEV) return 'ELITE';
   if (confPct >= tiers.STRONG.minConf && ev >= tiers.STRONG.minEV) return 'STRONG';
   if (confPct >= tiers.MEDIUM.minConf && ev >= tiers.MEDIUM.minEV) return 'MEDIUM';
@@ -4894,12 +4885,12 @@ function _assignTier(confPct, ev) {
 }
 
 function _calcEdgeScore(mu, line, tier, sampleConf, ev) {
-  var weight = UNIFIED_OU_CONFIG.TIERS[tier].weight;
+  var weight = OU_CFG.TIERS[tier].weight;
   return Math.abs(mu - line) * weight * sampleConf * (1 + ev);
 }
 
 function _getTierColor(tier, direction) {
-  var c = UNIFIED_OU_CONFIG.COLORS;
+  var c = OU_CFG.COLORS;
   if (direction === 'OVER') {
     switch (tier) {
       case 'ELITE': return c.eliteOver;
@@ -4918,8 +4909,8 @@ function _getTierColor(tier, direction) {
 }
 
 function _emptyColorRow() {
-  return [UNIFIED_OU_CONFIG.COLORS.na, UNIFIED_OU_CONFIG.COLORS.na, 
-          UNIFIED_OU_CONFIG.COLORS.na, UNIFIED_OU_CONFIG.COLORS.na];
+  return [OU_CFG.COLORS.na, OU_CFG.COLORS.na, 
+          OU_CFG.COLORS.na, OU_CFG.COLORS.na];
 }
 
 function _clearCells(row, indices) {
@@ -4971,7 +4962,7 @@ function _writeGameSummary(row, h, bets, maxEdge, bestTier, highest, fbTotal, fb
     setCol_('ou-best-ev', isFinite(bestEdge.ev) ? bestEdge.ev.toFixed(4) : '');
     setCol_('ou-best-edge', isFinite(bestEdge.edge) ? bestEdge.edge.toFixed(4) : '');
     
-    var tierSymbol = (UNIFIED_OU_CONFIG.TIERS[bestTier] || {}).symbol || '';
+    var tierSymbol = (OU_CFG.TIERS[bestTier] || {}).symbol || '';
     setCol_('ou-game-tier', bestTier + ' ' + tierSymbol);
   } else {
     setCol_('ou-best', 'N/A');
@@ -5083,7 +5074,7 @@ function _applyColors(sheet, colorMatrix, h, quarters) {
 
     if (colIdx !== undefined) {
       var colors = colorMatrix.map(function(row) {
-        return [(row && row[qi]) ? row[qi] : UNIFIED_OU_CONFIG.COLORS.na];
+        return [(row && row[qi]) ? row[qi] : OU_CFG.COLORS.na];
       });
       sheet.getRange(2, colIdx + 1, colors.length, 1).setBackgrounds(colors);
     }
@@ -5257,22 +5248,8 @@ function calculatePushProbability_(mean, sd, threshold, tolerance) {
   return Math.max(0, normalCDF_(zHigh) - normalCDF_(zLow));
 }
 
-function calculateExpectedValue_(adjProb, pushProb) {
-  var pLoss = 1 - adjProb - pushProb;
-  var ev = (adjProb * OU_CONFIG.JUICE) - pLoss;
-  return { percent: ev, amount: ev * 100 };
-}
-
-
-function getSheetInsensitive(ss, name) {
-  var sheets = ss.getSheets();
-  var nameLower = name.toLowerCase();
-  for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getName().toLowerCase() === nameLower) return sheets[i];
-  }
-  return null;
-}
-
+// calculateExpectedValue_: single implementation above (Patch 8 — collision removed).
+// O/U paths use _calcEV → calculateExpectedValue_(pWin, pPush).
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════
@@ -5281,55 +5258,154 @@ function getSheetInsensitive(ss, name) {
  */
 function logOUPrediction_(ss, payload) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
-  
+
   try {
     var logSheet = getSheetInsensitive(ss, 'OU_Log');
     if (!logSheet) logSheet = ss.insertSheet('OU_Log');
-    
-    var HEADER = [
-      'Timestamp', 'Config_Version', 'Date', 'Time', 'League',
-      'Home', 'Away', 'Quarter', 'Threshold', 'Line_Source',
-      'Prediction', 'Confidence', 'P_Over', 'P_Under', 'P_Push',
-      'Expected_Q', 'Scaled_SD', 'League_Avg', 'Sample_Size',
-      'Sample_Confidence', 'EV_Percent', 'Scale_Factor', 
-      'Tier', 'Edge_Score', 'Is_Bayesian', 'Reasoning'
+
+    var F17 = (typeof FORENSIC_CORE_17 !== 'undefined')
+      ? FORENSIC_CORE_17.slice()
+      : [
+        'Prediction_Record_ID', 'Universal_Game_ID', 'Config_Version', 'Timestamp_UTC',
+        'League', 'Date', 'Home', 'Away', 'Market', 'Period', 'Pick_Code', 'Pick_Text',
+        'Confidence_Pct', 'Confidence_Prob', 'Tier_Code', 'EV', 'Edge_Score'
+      ];
+    var OU_EXTRA = [
+      'Time', 'Quarter', 'Threshold', 'Line_Source', 'P_Over', 'P_Under', 'P_Push',
+      'Expected_Q', 'Scaled_SD', 'League_Avg', 'Sample_Size', 'Sample_Confidence',
+      'EV_Percent', 'Scale_Factor', 'Tier_Legacy', 'Is_Bayesian', 'Reasoning',
+      'Prediction', 'Confidence'
     ];
-    
-    if (logSheet.getLastRow() === 0) {
-      logSheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]);
-      logSheet.getRange(1, 1, 1, HEADER.length).setFontWeight('bold').setBackground('#d9d9d9');
-      logSheet.setFrozenRows(1);
+    var HEADER_TARGET = F17.concat(OU_EXTRA);
+
+    function canonKOu_(name) {
+      if (typeof canonicalHeaderKey_ === 'function') return canonicalHeaderKey_(name);
+      return String(name || '').trim().toLowerCase().replace(/[\s\-\.]+/g, '_').replace(/[^\w_]/g, '');
     }
-    
-    logSheet.appendRow([
-      new Date(),
-      payload.configVersion || '',
-      payload.date || '',
-      payload.time || '',
-      payload.league || '',
-      payload.homeTeam || '',
-      payload.awayTeam || '',
-      payload.quarter || '',
-      payload.threshold || 0,
-      payload.lineSource || '',
-      payload.prediction || '',
-      payload.confidence || 0,
-      payload.overPct || 0,
-      payload.underPct || 0,
-      payload.pushPct || 0,
-      payload.expectedQ || 0,
-      payload.scaledSD || 0,
-      payload.leagueAvg || 0,
-      payload.sampleSize || 0,
-      payload.sampleConfidence || 0,
-      payload.evPercent || 0,
-      payload.scaleFactor || 1,
-      payload.tier || 'UNKNOWN',
-      payload.edgeScore || 0,
-      payload.isBayesian ? 'YES' : 'NO',
-      payload.reasoning || ''
-    ]);
-    
+
+    var lr0 = logSheet.getLastRow();
+    var lc0 = logSheet.getLastColumn();
+    var existingH = [];
+    if (lr0 > 0 && lc0 > 0) {
+      existingH = logSheet.getRange(1, 1, 1, lc0).getValues()[0] || [];
+    }
+
+    var headerRow;
+    if (!existingH || existingH.length === 0) {
+      headerRow = HEADER_TARGET;
+      logSheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
+      logSheet.getRange(1, 1, 1, headerRow.length).setFontWeight('bold').setBackground('#d9d9d9');
+      logSheet.setFrozenRows(1);
+    } else {
+      headerRow = existingH.slice();
+      var hmEx = (typeof createCanonicalHeaderMap_ === 'function')
+        ? createCanonicalHeaderMap_(headerRow)
+        : createHeaderMap(headerRow);
+      HEADER_TARGET.forEach(function (col) {
+        var ck = canonKOu_(col);
+        if (hmEx[ck] === undefined) {
+          headerRow.push(col);
+          hmEx[ck] = headerRow.length - 1;
+        }
+      });
+      if (headerRow.length !== existingH.length) {
+        logSheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
+        logSheet.getRange(1, 1, 1, headerRow.length).setFontWeight('bold').setBackground('#d9d9d9');
+      }
+    }
+
+    var hm = (typeof createCanonicalHeaderMap_ === 'function')
+      ? createCanonicalHeaderMap_(headerRow)
+      : createHeaderMap(headerRow);
+
+    var cfgV = (payload && payload.configVersion) || '';
+    var qLab = 'Q' + String((payload && payload.quarter) != null ? String(payload.quarter).replace(/^Q/i, '') : 'X');
+    var universalGameId = '';
+    try {
+      if (typeof buildUniversalGameID_ === 'function') {
+        universalGameId = buildUniversalGameID_(payload.date, payload.homeTeam, payload.awayTeam);
+      }
+    } catch (eU) {
+      Logger.log('[OU Logger] buildUniversalGameID_: ' + eU.message);
+    }
+    if (!universalGameId && typeof standardizeDate_ === 'function') {
+      var ymdO = standardizeDate_(payload.date);
+      var yO = (ymdO && ymdO.replace(/-/g, '')) || 'NODATE';
+      var hO = String((payload && payload.homeTeam) || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+      var aO = String((payload && payload.awayTeam) || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+      universalGameId = yO + '__' + hO + '__' + aO;
+    }
+    var predictionRecordId = '';
+    try {
+      if (typeof buildPredictionRecordID_ === 'function' && universalGameId) {
+        predictionRecordId = buildPredictionRecordID_(universalGameId, 'TIER2_OU', qLab, cfgV || 'OU_DEFAULT');
+      }
+    } catch (eP) {
+      Logger.log('[OU Logger] buildPredictionRecordID_: ' + eP.message);
+    }
+
+    var confB = (typeof normalizeConfidenceBundle_ === 'function')
+      ? normalizeConfidenceBundle_(payload && payload.confidence)
+      : { confidencePct: Number(payload && payload.confidence) || 0, confidenceProb: 0, tierCode: 'WEAK', tierDisplay: '' };
+
+    var predStr = String((payload && payload.prediction) || '');
+    var pU = predStr.toUpperCase();
+    var pickCode = 'UNK';
+    if (pU.indexOf('OVER') >= 0) pickCode = 'OVER';
+    else if (pU.indexOf('UNDER') >= 0) pickCode = 'UNDER';
+
+    var stdD = (typeof standardizeDate_ === 'function') ? standardizeDate_(payload && payload.date) : '';
+    var evNum = payload && payload.evPercent;
+    var out = new Array(headerRow.length).fill('');
+    function setOu_(aliases, val) {
+      for (var i = 0; i < aliases.length; i++) {
+        var ck = canonKOu_(aliases[i]);
+        if (hm[ck] !== undefined) {
+          out[hm[ck]] = val;
+          return;
+        }
+      }
+    }
+
+    setOu_(['Prediction_Record_ID'], predictionRecordId);
+    setOu_(['Universal_Game_ID'], universalGameId);
+    setOu_(['Config_Version'], cfgV);
+    setOu_(['Timestamp_UTC'], new Date());
+    setOu_(['League'], (payload && payload.league) || '');
+    setOu_(['Date'], stdD || (payload && payload.date) || '');
+    setOu_(['Home'], (payload && payload.homeTeam) || '');
+    setOu_(['Away'], (payload && payload.awayTeam) || '');
+    setOu_(['Market'], 'TIER2_OU');
+    setOu_(['Period'], qLab);
+    setOu_(['Pick_Code'], pickCode);
+    setOu_(['Pick_Text'], predStr);
+    setOu_(['Confidence_Pct'], confB.confidencePct);
+    setOu_(['Confidence_Prob'], confB.confidenceProb);
+    setOu_(['Tier_Code'], confB.tierCode);
+    setOu_(['EV'], evNum);
+    setOu_(['Edge_Score'], (payload && payload.edgeScore) || 0);
+
+    setOu_(['Time'], (payload && payload.time) || '');
+    setOu_(['Quarter'], (payload && payload.quarter) || '');
+    setOu_(['Threshold'], payload && payload.threshold);
+    setOu_(['Line_Source'], (payload && payload.lineSource) || '');
+    setOu_(['P_Over'], payload && payload.overPct);
+    setOu_(['P_Under'], payload && payload.underPct);
+    setOu_(['P_Push'], payload && payload.pushPct);
+    setOu_(['Expected_Q'], payload && payload.expectedQ);
+    setOu_(['Scaled_SD'], payload && payload.scaledSD);
+    setOu_(['League_Avg'], payload && payload.leagueAvg);
+    setOu_(['Sample_Size'], payload && payload.sampleSize);
+    setOu_(['Sample_Confidence'], payload && payload.sampleConfidence);
+    setOu_(['EV_Percent'], payload && payload.evPercent);
+    setOu_(['Scale_Factor'], payload && payload.scaleFactor);
+    setOu_(['Tier_Legacy'], (payload && payload.tier) || 'UNKNOWN');
+    setOu_(['Is_Bayesian'], payload && payload.isBayesian ? 'YES' : 'NO');
+    setOu_(['Reasoning'], (payload && payload.reasoning) || '');
+    setOu_(['Prediction'], predStr);
+    setOu_(['Confidence'], payload && payload.confidence);
+
+    logSheet.appendRow(out);
   } catch (e) {
     Logger.log('[OU Logger] ' + e.message);
   }
@@ -6875,28 +6951,23 @@ if (typeof getSheetInsensitive !== 'function') {
 
 if (typeof createHeaderMap !== 'function') {
   function createHeaderMap(headerRow) {
-  var map = {};
-  if (!headerRow) return map;
-  
-  for (var i = 0; i < headerRow.length; i++) {
-    var raw = String(headerRow[i] || '').trim();
-    if (!raw) continue;
-    
-    var lower = raw.toLowerCase();
-    
-    // Strong normalization: keep only a-z0-9
-    var keyStrong = lower.replace(/[^a-z0-9]/g, '');
-    if (keyStrong && map[keyStrong] === undefined) map[keyStrong] = i;
-    
-    // Medium normalization: remove spaces/underscores/dashes
-    var keyMedium = lower.replace(/[\s_-]+/g, '');
-    if (keyMedium && map[keyMedium] === undefined) map[keyMedium] = i;
-    
-    // Light normalization: just lowercase
-    if (map[lower] === undefined) map[lower] = i;
+    if (typeof createCanonicalHeaderMap_ === 'function') {
+      return createCanonicalHeaderMap_(headerRow);
+    }
+    var map = {};
+    if (!headerRow) return map;
+    for (var i = 0; i < headerRow.length; i++) {
+      var raw = String(headerRow[i] || '').trim();
+      if (!raw) continue;
+      var lower = raw.toLowerCase();
+      var keyStrong = lower.replace(/[^a-z0-9]/g, '');
+      if (keyStrong && map[keyStrong] === undefined) map[keyStrong] = i;
+      var keyMedium = lower.replace(/[\s_-]+/g, '');
+      if (keyMedium && map[keyMedium] === undefined) map[keyMedium] = i;
+      if (map[lower] === undefined) map[lower] = i;
+    }
+    return map;
   }
-  return map;
-}
 }
 
 /**
@@ -6906,8 +6977,13 @@ function findColumn_(headerMap, possibleNames) {
   if (!headerMap || !possibleNames) return undefined;
   
   for (var i = 0; i < possibleNames.length; i++) {
-    var key = String(possibleNames[i]).toLowerCase().replace(/[^a-z0-9]/g, '');
+    var raw = String(possibleNames[i]);
+    var key = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (headerMap[key] !== undefined) return headerMap[key];
+    if (typeof canonicalHeaderKey_ === 'function') {
+      var ck = canonicalHeaderKey_(raw);
+      if (headerMap[ck] !== undefined) return headerMap[ck];
+    }
   }
   return undefined;
 }
@@ -7513,23 +7589,28 @@ function logTier2Prediction(ss, payload) {
     var logSheet = getSheetInsensitive(ss, 'Tier2_Log');
     if (!logSheet) logSheet = ss.insertSheet('Tier2_Log');
 
-    // Base schema (your existing columns) — KEEP ORDER EXACTLY
-    var BASE_HEADER = [
-      'Timestamp', 'Config_Version', 'Source_Sheet', 'Row_Index', 'Game_ID',
-      'Date', 'Time', 'League', 'Home', 'Away', 'Quarter', 'Path',
+    // Phase 2 / Patch 6: FORENSIC_CORE_17 first on greenfield; legacy + F17 merged append-only.
+    var F17 = (typeof FORENSIC_CORE_17 !== 'undefined')
+      ? FORENSIC_CORE_17.slice()
+      : [
+        'Prediction_Record_ID', 'Universal_Game_ID', 'Config_Version', 'Timestamp_UTC',
+        'League', 'Date', 'Home', 'Away', 'Market', 'Period', 'Pick_Code', 'Pick_Text',
+        'Confidence_Pct', 'Confidence_Prob', 'Tier_Code', 'EV', 'Edge_Score'
+      ];
+    var T2_EXTRA = [
+      'Timestamp', 'Source_Sheet', 'Row_Index', 'Game_ID', 'Time', 'Quarter', 'Path',
       'Flip_Applied', 'Flip_Key', 'Raw_Margin_PreFlip', 'Final_Margin_PostFlip',
-      'Abs_Margin', 'Threshold_Used',
-      'Tier', 'Threshold_EVEN', 'Threshold_MEDIUM', 'Threshold_STRONG',
+      'Abs_Margin', 'Threshold_Used', 'Tier', 'Threshold_EVEN', 'Threshold_MEDIUM', 'Threshold_STRONG',
       'Base_Margin', 'Momentum_Swing', 'Variance_Penalty', 'Avg_Variance',
       'Home_Momentum', 'Away_Momentum', 'Home_Variance', 'Away_Variance',
-      'Rank_Home', 'Rank_Away', 'Prediction_Text'
+      'Rank_Home', 'Rank_Away', 'Prediction_Text', 'Confidence'
     ];
+    var targetOrder = F17.concat(T2_EXTRA);
 
-    // NEW columns appended to the end (safe for existing data)
-    var EXTRA_HEADER = [
-      'Confidence',   // <-- what your Bet Slips need for SNIPER 🎯
-      'Edge_Score'    // optional but useful for ranking
-    ];
+    function canonK_(name) {
+      if (typeof canonicalHeaderKey_ === 'function') return canonicalHeaderKey_(name);
+      return String(name || '').trim().toLowerCase().replace(/[\s\-\.]+/g, '_').replace(/[^\w_]/g, '');
+    }
 
     // -------------------------------------------------------------------
     // 1) Ensure header exists and contains new columns (append-only upgrade)
@@ -7543,39 +7624,32 @@ function logTier2Prediction(ss, payload) {
 
     var headerToUse;
     if (!existingHeader || existingHeader.length === 0) {
-      headerToUse = BASE_HEADER.concat(EXTRA_HEADER);
+      headerToUse = targetOrder;
       logSheet.getRange(1, 1, 1, headerToUse.length).setValues([headerToUse]);
       logSheet.getRange(1, 1, 1, headerToUse.length).setFontWeight('bold').setBackground('#d0d0d0');
     } else {
       headerToUse = existingHeader.slice();
-      var headerMapExisting = createHeaderMap(headerToUse);
+      var headerMapExisting = (typeof createCanonicalHeaderMap_ === 'function')
+        ? createCanonicalHeaderMap_(headerToUse)
+        : createHeaderMap(headerToUse);
 
-      // Append any missing base columns (rare, but safe)
-      BASE_HEADER.forEach(function (col) {
-        var k = String(col).toLowerCase().trim();
-        if (headerMapExisting[k] === undefined) {
+      targetOrder.forEach(function (col) {
+        var ck = canonK_(col);
+        if (headerMapExisting[ck] === undefined) {
           headerToUse.push(col);
-          headerMapExisting[k] = headerToUse.length - 1;
+          headerMapExisting[ck] = headerToUse.length - 1;
         }
       });
 
-      // Append new columns (Confidence, Edge_Score)
-      EXTRA_HEADER.forEach(function (col) {
-        var k = String(col).toLowerCase().trim();
-        if (headerMapExisting[k] === undefined) {
-          headerToUse.push(col);
-          headerMapExisting[k] = headerToUse.length - 1;
-        }
-      });
-
-      // If we extended the header, write it back
       if (headerToUse.length !== existingHeader.length) {
         logSheet.getRange(1, 1, 1, headerToUse.length).setValues([headerToUse]);
         logSheet.getRange(1, 1, 1, headerToUse.length).setFontWeight('bold').setBackground('#d0d0d0');
       }
     }
 
-    var hm = createHeaderMap(headerToUse);
+    var hm = (typeof createCanonicalHeaderMap_ === 'function')
+      ? createCanonicalHeaderMap_(headerToUse)
+      : createHeaderMap(headerToUse);
 
     // -------------------------------------------------------------------
     // 2) Prepare derived fields (existing logic preserved)
@@ -7618,53 +7692,110 @@ function logTier2Prediction(ss, payload) {
     }
 
     // -------------------------------------------------------------------
-    // 3) Build row by header name (prevents column index drift)
+    // 3) IDs + confidence bundle (FORENSIC_CORE_17)
+    // -------------------------------------------------------------------
+    var qLabel = 'Q' + String((payload && payload.quarter) != null ? String(payload.quarter).replace(/^Q/i, '') : '');
+    var universalGameId = '';
+    try {
+      if (typeof buildUniversalGameID_ === 'function') {
+        universalGameId = buildUniversalGameID_(payload.date, payload.homeTeam, payload.awayTeam);
+      }
+    } catch (eU) {
+      Logger.log('[logTier2Prediction] buildUniversalGameID_: ' + eU.message);
+    }
+    if (!universalGameId && typeof standardizeDate_ === 'function') {
+      var ymd2 = standardizeDate_(payload.date);
+      var y2 = (ymd2 && ymd2.replace(/-/g, '')) || 'NODATE';
+      var h2 = String((payload && payload.homeTeam) || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+      var a2 = String((payload && payload.awayTeam) || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+      universalGameId = y2 + '__' + h2 + '__' + a2;
+    }
+    var predictionRecordId = '';
+    try {
+      if (typeof buildPredictionRecordID_ === 'function' && universalGameId) {
+        predictionRecordId = buildPredictionRecordID_(universalGameId, 'TIER2_MARGIN', qLabel || 'QX', configVersionToLog);
+      }
+    } catch (eP) {
+      Logger.log('[logTier2Prediction] buildPredictionRecordID_: ' + eP.message);
+    }
+
+    var confB = (typeof normalizeConfidenceBundle_ === 'function')
+      ? normalizeConfidenceBundle_(confVal)
+      : { confidencePct: Number(confVal) || 0, confidenceProb: (Number(confVal) || 0) / 100, tierCode: 'WEAK', tierDisplay: '' };
+    var predTxt = (payload && payload.predictionText) ? String(payload.predictionText) : '';
+    var predU = predTxt.toUpperCase();
+    var pickCode = 'UNK';
+    if (predU.indexOf('EVEN') >= 0) pickCode = 'EVEN';
+    else if (predU.charAt(0) === 'H') pickCode = 'HOME';
+    else if (predU.charAt(0) === 'A') pickCode = 'AWAY';
+
+    var stdDate = (typeof standardizeDate_ === 'function') ? standardizeDate_(payload && payload.date) : '';
+    var ts = new Date();
+
+    // -------------------------------------------------------------------
+    // 4) Build row by header name (prevents column index drift)
     // -------------------------------------------------------------------
     var out = new Array(headerToUse.length).fill('');
 
-    // Core fields
-    out[hm['timestamp']] = new Date();
-    out[hm['config_version']] = configVersionToLog;
-    out[hm['source_sheet']] = (payload && payload.sourceSheet) || '';
-    out[hm['row_index']] = (payload && payload.rowIndex) || '';
-    out[hm['game_id']] = (payload && payload.gameId) || '';
-    out[hm['date']] = (payload && payload.date) || '';
-    out[hm['time']] = (payload && payload.time) || '';
-    out[hm['league']] = (payload && payload.league) || '';
-    out[hm['home']] = (payload && payload.homeTeam) || '';
-    out[hm['away']] = (payload && payload.awayTeam) || '';
-    out[hm['quarter']] = (payload && payload.quarter) || '';
-    out[hm['path']] = (payload && payload.path) || '';
-    out[hm['flip_applied']] = (payload && payload.flipApplied) ? 'TRUE' : 'FALSE';
-    out[hm['flip_key']] = (payload && payload.flipKey) || '';
+    function setIf_(keyList, val) {
+      for (var si = 0; si < keyList.length; si++) {
+        var ck = canonK_(keyList[si]);
+        if (hm[ck] !== undefined) {
+          out[hm[ck]] = val;
+          return;
+        }
+      }
+    }
 
-    out[hm['raw_margin_preflip']] = payload && payload.rawMargin;
-    out[hm['final_margin_postflip']] = payload && payload.finalMargin;
-    out[hm['abs_margin']] = payload && payload.absMargin;
-    out[hm['threshold_used']] = payload && payload.threshold;
-    out[hm['tier']] = (payload && payload.tier) || '';
+    // FORENSIC 17
+    setIf_(['Prediction_Record_ID'], predictionRecordId);
+    setIf_(['Universal_Game_ID'], universalGameId);
+    setIf_(['Config_Version'], configVersionToLog);
+    setIf_(['Timestamp_UTC'], ts);
+    setIf_(['League'], (payload && payload.league) || '');
+    setIf_(['Date'], stdDate || (payload && payload.date) || '');
+    setIf_(['Home'], (payload && payload.homeTeam) || '');
+    setIf_(['Away'], (payload && payload.awayTeam) || '');
+    setIf_(['Market'], 'TIER2_MARGIN');
+    setIf_(['Period'], qLabel || '');
+    setIf_(['Pick_Code'], pickCode);
+    setIf_(['Pick_Text'], predTxt);
+    setIf_(['Confidence_Pct'], confB.confidencePct);
+    setIf_(['Confidence_Prob'], confB.confidenceProb);
+    setIf_(['Tier_Code'], confB.tierCode);
+    setIf_(['EV'], '');
+    setIf_(['Edge_Score'], edgeVal);
 
-    out[hm['threshold_even']] = thresholds.even || 0;
-    out[hm['threshold_medium']] = thresholds.medium || 0;
-    out[hm['threshold_strong']] = thresholds.strong || 0;
-
-    out[hm['base_margin']] = c.baseMargin || '';
-    out[hm['momentum_swing']] = c.momentumSwing || '';
-    out[hm['variance_penalty']] = c.variancePenalty || '';
-    out[hm['avg_variance']] = c.avgVariance || '';
-    out[hm['home_momentum']] = c.homeMomentum || '';
-    out[hm['away_momentum']] = c.awayMomentum || '';
-    out[hm['home_variance']] = c.homeVariance || '';
-    out[hm['away_variance']] = c.awayVariance || '';
-
-    out[hm['rank_home']] = rankHome;
-    out[hm['rank_away']] = rankAway;
-
-    out[hm['prediction_text']] = (payload && payload.predictionText) || '';
-
-    // NEW: Confidence + Edge Score
-    if (hm['confidence'] !== undefined) out[hm['confidence']] = confVal;
-    if (hm['edge_score'] !== undefined) out[hm['edge_score']] = edgeVal;
+    // Legacy / extended
+    setIf_(['Timestamp'], ts);
+    setIf_(['Source_Sheet'], (payload && payload.sourceSheet) || '');
+    setIf_(['Row_Index'], (payload && payload.rowIndex) || '');
+    setIf_(['Game_ID'], (payload && payload.gameId) || '');
+    setIf_(['Time'], (payload && payload.time) || '');
+    setIf_(['Quarter'], (payload && payload.quarter) || '');
+    setIf_(['Path'], (payload && payload.path) || '');
+    setIf_(['Flip_Applied'], (payload && payload.flipApplied) ? 'TRUE' : 'FALSE');
+    setIf_(['Flip_Key'], (payload && payload.flipKey) || '');
+    setIf_(['Raw_Margin_PreFlip'], payload && payload.rawMargin);
+    setIf_(['Final_Margin_PostFlip'], payload && payload.finalMargin);
+    setIf_(['Abs_Margin'], payload && payload.absMargin);
+    setIf_(['Threshold_Used'], payload && payload.threshold);
+    setIf_(['Tier'], (payload && payload.tier) || '');
+    setIf_(['Threshold_EVEN'], thresholds.even || 0);
+    setIf_(['Threshold_MEDIUM'], thresholds.medium || 0);
+    setIf_(['Threshold_STRONG'], thresholds.strong || 0);
+    setIf_(['Base_Margin'], c.baseMargin || '');
+    setIf_(['Momentum_Swing'], c.momentumSwing || '');
+    setIf_(['Variance_Penalty'], c.variancePenalty || '');
+    setIf_(['Avg_Variance'], c.avgVariance || '');
+    setIf_(['Home_Momentum'], c.homeMomentum || '');
+    setIf_(['Away_Momentum'], c.awayMomentum || '');
+    setIf_(['Home_Variance'], c.homeVariance || '');
+    setIf_(['Away_Variance'], c.awayVariance || '');
+    setIf_(['Rank_Home'], rankHome);
+    setIf_(['Rank_Away'], rankAway);
+    setIf_(['Prediction_Text'], predTxt);
+    setIf_(['Confidence'], confVal);
 
     logSheet.appendRow(out);
 

@@ -1437,6 +1437,9 @@ function getSheetInsensitiveAllowEmpty(ss, name) {
  * @returns {Object<string, number>} A header map object.
  */
 function createHeaderMap(headerRow) {
+  if (typeof createCanonicalHeaderMap_ === 'function') {
+    return createCanonicalHeaderMap_(headerRow);
+  }
   const map = {};
   if (!headerRow || !Array.isArray(headerRow)) return map;
 

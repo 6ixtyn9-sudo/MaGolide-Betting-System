@@ -2540,6 +2540,16 @@ function _getEnhHighQ(ss, homeTeam, awayTeam) {
       ? (getTunedThresholds(ss) || {}) : {};
     var config = canonicalizeConfig(rawConfig);
 
+    if (typeof validateConfigState_ === 'function') {
+      try {
+        validateConfigState_(config, [
+          'bankerThreshold', 'sniperMinMargin', 'ouMinConf', 'enableRobbers', 'includeHighestQuarter'
+        ]);
+      } catch (eAcc) {
+        log('validateConfigState_: ' + eAcc);
+      }
+    }
+
     var tierCuts = (typeof _loadTierCuts === 'function')
       ? _loadTierCuts(ss) : null;
 
@@ -3217,6 +3227,7 @@ function _getEnhHighQ(ss, homeTeam, awayTeam) {
     Logger.log('═══════════════════════════════════════════════════════════════');
     Logger.log('  ACCUMULATOR COMPLETE: ' + summary);
     Logger.log('═══════════════════════════════════════════════════════════════');
+    Logger.log('[PHASE 3 COMPLETE] Accumulator canonicalizeConfig + validateConfigState_ + Bet_Slips 23-col');
 
     ss.toast('Done! ' + summary, 'Ma Golide', 5);
 
@@ -3536,6 +3547,143 @@ function createAccumulatorConfigSheet() {
 // ─────────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Parse "Home vs Away" (or @ / v) for Contract_Enforcer IDs.
+ */
+function _m8_parseMatchTeamsForIds_(matchStr) {
+  var s = String(matchStr || '').trim();
+  if (!s) return { home: '', away: '' };
+  if (/\s+@\s+/.test(s)) {
+    var tmp = s.split(/\s+@\s+/);
+    if (tmp.length >= 2) {
+      return { home: String(tmp[1]).trim(), away: String(tmp[0]).trim() };
+    }
+  }
+  var parts = s.split(/\s+vs\.?\s+/i);
+  if (parts.length < 2) parts = s.split(/\s+v\s+/i);
+  if (parts.length < 2) return { home: '', away: '' };
+  return { home: String(parts[0]).trim(), away: String(parts[1]).trim() };
+}
+
+/**
+ * Universal + source prediction IDs (slip index applied in _formatBetSlipRow_).
+ */
+function _m8_readConfigVersions_(ss) {
+  var o = { t1: '', t2: '' };
+  try {
+    if (typeof loadTier1Config === 'function') {
+      var c1 = loadTier1Config(ss);
+      o.t1 = String((c1 && (c1.version || c1.config_version)) || '');
+    }
+  } catch (e1) {}
+  try {
+    if (typeof loadTier2Config === 'function') {
+      var c2 = loadTier2Config(ss);
+      o.t2 = String((c2 && (c2.config_version || c2.version)) || '');
+    }
+  } catch (e2) {}
+  return o;
+}
+
+function _m8_forensicIdsForSlip_(pick, market, period, cfgVer) {
+  var teams = (pick && pick.home && pick.away)
+    ? { home: pick.home, away: pick.away }
+    : _m8_parseMatchTeamsForIds_(pick && pick.match);
+  var cv = String(cfgVer || (typeof CONTRACT_VERSION !== 'undefined' ? CONTRACT_VERSION : 'ACC'));
+  var universalGameId = '';
+  try {
+    if (typeof buildUniversalGameID_ === 'function' && teams.home && teams.away) {
+      universalGameId = buildUniversalGameID_(pick && pick.date, teams.home, teams.away);
+    }
+  } catch (e1) {
+    Logger.log('[_m8_forensicIdsForSlip_] buildUniversalGameID_: ' + e1.message);
+  }
+  if (!universalGameId && typeof standardizeDate_ === 'function' && teams.home && teams.away) {
+    var ymd = standardizeDate_(pick && pick.date);
+    var y = (ymd && ymd.replace(/-/g, '')) || 'NODATE';
+    universalGameId = y + '__' + String(teams.home).toUpperCase().replace(/[^A-Z0-9]+/g, '_') + '__' + String(teams.away).toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+  }
+  var sourcePredictionRecordId = '';
+  try {
+    if (typeof buildPredictionRecordID_ === 'function' && universalGameId) {
+      sourcePredictionRecordId = buildPredictionRecordID_(universalGameId, market, period, cv);
+    }
+  } catch (e2) {
+    Logger.log('[_m8_forensicIdsForSlip_] buildPredictionRecordID_: ' + e2.message);
+  }
+  return { universalGameId: universalGameId, sourcePredictionRecordId: sourcePredictionRecordId };
+}
+
+/**
+ * One machine row for Bet_Slips — BET_SLIPS_CONTRACT_23 (Phase 2 Patch 3B).
+ * cfgBundle: { t1, t2, acc } config version stamps.
+ */
+function _formatBetSlipRow_(pick, market, period, cfgBundle, slipIndex,
+  formatTime, formatOdds, formatEV, getTierDisplay, getTierLabel, confPct, typeLabel) {
+  var accVer = cfgBundle && cfgBundle.acc != null ? cfgBundle.acc : '';
+  var ids = _m8_forensicIdsForSlip_(pick, market, period, accVer);
+  var betRecordId = '';
+  try {
+    if (typeof buildBetRecordID_ === 'function' && ids.sourcePredictionRecordId) {
+      betRecordId = buildBetRecordID_(ids.sourcePredictionRecordId, slipIndex);
+    }
+  } catch (eB) {
+    Logger.log('[_formatBetSlipRow_] buildBetRecordID_: ' + eB.message);
+  }
+  var teams = (pick && pick.home && pick.away)
+    ? { home: pick.home, away: pick.away }
+    : _m8_parseMatchTeamsForIds_(pick && pick.match);
+  var stdDate = (typeof standardizeDate_ === 'function')
+    ? standardizeDate_(pick && pick.date)
+    : '';
+  var confB = (typeof normalizeConfidenceBundle_ === 'function')
+    ? normalizeConfidenceBundle_(confPct)
+    : {
+      confidencePct: Number(confPct) || 0,
+      confidenceProb: (Number(confPct) || 0) / 100,
+      tierCode: (getTierLabel && getTierLabel(confPct)) || 'WEAK',
+      tierDisplay: (pick && pick.tierDisplay) || (getTierDisplay && getTierDisplay(confPct)) || ''
+    };
+  var pickStr = String((pick && pick.pick) || '');
+  var pU = pickStr.toUpperCase();
+  var side = '';
+  var lineStr = '';
+  if (pU.indexOf('OVER') >= 0) side = 'OVER';
+  else if (pU.indexOf('UNDER') >= 0) side = 'UNDER';
+  var lm = pickStr.match(/([+-]?\d+\.?\d*)/);
+  if (lm) lineStr = lm[1];
+  var mkt = typeLabel != null ? typeLabel : (pick.type || market || '');
+  var evDisp = formatEV(pick.ev);
+  var t1 = (cfgBundle && cfgBundle.t1) || '';
+  var t2 = (cfgBundle && cfgBundle.t2) || '';
+  var acc = (cfgBundle && cfgBundle.acc) || '';
+  return [
+    betRecordId,
+    ids.universalGameId || '',
+    ids.sourcePredictionRecordId || '',
+    pick.league || '',
+    stdDate || pick.date || '',
+    teams.home || '',
+    teams.away || '',
+    market,
+    period,
+    side,
+    lineStr,
+    '',
+    pickStr,
+    formatOdds(pick.odds),
+    confB.confidencePct,
+    confB.confidenceProb,
+    evDisp,
+    confB.tierCode || 'WEAK',
+    pick.tierDisplay || confB.tierDisplay || getTierDisplay(confPct),
+    t1,
+    t2,
+    acc,
+    'Module_8_Accumulator'
+  ];
+}
+
+/**
  * _writeBetSlipsEnhanced — Write all picks to Bet_Slips sheet
  *
  * ROBBERS now use unified tier/confidence system:
@@ -3560,10 +3708,13 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   if (!sheet) {
     sheet = ss.insertSheet('Bet_Slips');
   }
-  
-  sheet.clear();
-  sheet.getRange('A:J').setNumberFormat('@');
-  
+
+  // Append-only: do not clear the sheet (Patch 1C / contract runs stack).
+  var lastRowBefore = sheet.getLastRow();
+  try {
+    sheet.getRange('A:W').setNumberFormat('@');
+  } catch (eFmt) {}
+
   // ─── NORMALIZE PICKS OBJECT ────────────────────────────────────────────────
   picks = picks || {};
   picks.bankers = picks.bankers || [];
@@ -3571,8 +3722,44 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   picks.robbers = picks.robbers || [];
   picks.firstHalves = picks.firstHalves || [];
   picks.ftOUs = picks.ftOUs || [];
-  
-  var headers = ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier'];
+
+  var NUM_COLS = 23;
+  var slipSeq = 0;
+  var cfgAcc = (config && (config.config_version_accumulator || config.acc_version || config.version)) ||
+    (typeof CONTRACT_VERSION !== 'undefined' ? CONTRACT_VERSION : 'ACC');
+  var cfgVers = (typeof _m8_readConfigVersions_ === 'function') ? _m8_readConfigVersions_(ss) : { t1: '', t2: '' };
+  var cfgBundle = {
+    t1: cfgVers.t1 || '',
+    t2: cfgVers.t2 || '',
+    acc: cfgAcc
+  };
+
+  var headers = (typeof BET_SLIPS_CONTRACT_23 !== 'undefined')
+    ? BET_SLIPS_CONTRACT_23.slice()
+    : [
+      'Bet_Record_ID', 'Universal_Game_ID', 'Source_Prediction_Record_ID',
+      'League', 'Date', 'Home', 'Away', 'Market', 'Period', 'Selection_Side', 'Selection_Line',
+      'Selection_Team', 'Selection_Text', 'Odds', 'Confidence_Pct', 'Confidence_Prob', 'EV',
+      'Tier_Code', 'Tier_Display', 'Config_Version_T1', 'Config_Version_T2', 'Config_Version_Acc', 'Source_Module'
+    ];
+
+  function pad23(cells) {
+    var r = cells ? cells.slice() : [];
+    while (r.length < NUM_COLS) r.push('');
+    return r;
+  }
+
+  function slipPeriodFromSniper_(sp) {
+    var m = String((sp && sp.pick) || '').match(/\bQ([1-4])\b/i);
+    return m ? ('Q' + m[1]) : 'FT';
+  }
+
+  function slipMarketFromSniper_(sp) {
+    if (sp && sp.signalType === 'MARGIN') return 'SNIPER_MARGIN';
+    var p = String(sp && sp.pick || '').toUpperCase();
+    if (p.indexOf('OVER') >= 0 || p.indexOf('UNDER') >= 0) return 'SNIPER_OU';
+    return 'SNIPER';
+  }
   
   // ─── HELPER FUNCTIONS ──────────────────────────────────────────────────────
   
@@ -3643,212 +3830,184 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   }
   
   // ─── BUILD OUTPUT ──────────────────────────────────────────────────────────
-  
+
   var output = [
-    ['Ma Golide Bet Slips - Generated: ' + new Date().toLocaleString() +
-     (enhancementsEnabled ? ' [ENHANCED]' : ''), '', '', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', '', '', '']
+    pad23(['Ma Golide Bet Slips - Generated: ' + new Date().toLocaleString() +
+      (enhancementsEnabled ? ' [ENHANCED]' : '')]),
+    pad23([])
   ];
-  
+
+  if (lastRowBefore > 0) {
+    output.unshift(pad23([]));
+    output.unshift(pad23(['── Bet_Slips run ' + new Date().toISOString() + ' ──']));
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BANKERS SECTION
   // ═══════════════════════════════════════════════════════════════════════════
-  output.push(['──── BANKERS (>=' + (config.bankerThreshold || 60) + '% Confidence) ────', 
-               '', '', '', '', '', '', '', '', '']);
+  output.push(pad23(['──── BANKERS (>=' + (config.bankerThreshold || 60) + '% Confidence) ────']));
   output.push(headers);
-  
+
   if (picks.bankers.length) {
     for (var bi = 0; bi < picks.bankers.length; bi++) {
       var b = picks.bankers[bi];
       var bConf = parseConf(b.confidence);
-      output.push([
-        b.league || '',
-        b.date || '',
-        formatTime(b.time),
-        b.match || '',
-        b.pick || '',
-        'BANKER',
-        formatOdds(b.odds),
-        b.tierDisplay || getTierDisplay(bConf),
-        formatEV(b.ev),
-        b.tier || getTierLabel(bConf)
-      ]);
+      slipSeq++;
+      output.push(_formatBetSlipRow_(b, 'BANKER', 'FT', cfgBundle, slipSeq,
+        formatTime, formatOdds, formatEV, getTierDisplay, getTierLabel, bConf, 'BANKER'));
     }
   } else {
-    output.push(['No Bankers found', '', '', '', '', '', '', '', '', '']);
+    output.push(pad23(['No Bankers found']));
   }
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // ROBBERS SECTION — Uses unified tier/confidence from normalization
+  // ROBBERS SECTION
   // ═══════════════════════════════════════════════════════════════════════════
   if (picks.robbers && picks.robbers.length > 0) {
-    output.push(['', '', '', '', '', '', '', '', '', '']);
-    output.push(['──── ROBBERS (Upset Picks) ────', '', '', '', '', '', '', '', '', '']);
+    output.push(pad23([]));
+    output.push(pad23(['──── ROBBERS (Upset Picks) ────']));
     output.push(headers);
-    
+
     for (var ri = 0; ri < picks.robbers.length; ri++) {
       var r = picks.robbers[ri];
       var rConf = parseConf(r.confidence);
-      
-      // Use normalized values if present, otherwise derive
-      var confDisplay = r.tierDisplay || getTierDisplay(rConf);
-      var tierLabel = r.tier || getTierLabel(rConf);
-      
-      // Ensure tier is unified (not "ROBBER" or "ROBBER_ELITE")
-      if (typeof tierLabel === 'string' && tierLabel.indexOf('ROBBER') !== -1) {
-        tierLabel = getTierLabel(rConf);
+      var tierLabelR = r.tier || getTierLabel(rConf);
+      if (typeof tierLabelR === 'string' && tierLabelR.indexOf('ROBBER') !== -1) {
+        tierLabelR = getTierLabel(rConf);
       }
-      
-      output.push([
-        r.league || '',
-        r.date || '',
-        formatTime(r.time),
-        r.match || '',
-        r.pick || '',
-        'ROBBER',
-        formatOdds(r.odds),
-        confDisplay,
-        formatEV(r.ev),
-        tierLabel
-      ]);
+      var rPick = {
+        league: r.league, date: r.date, time: r.time, match: r.match, pick: r.pick,
+        odds: r.odds, ev: r.ev, tierDisplay: r.tierDisplay || getTierDisplay(rConf), tier: tierLabelR
+      };
+      slipSeq++;
+      output.push(_formatBetSlipRow_(rPick, 'ROBBER', 'FT', cfgBundle, slipSeq,
+        formatTime, formatOdds, formatEV, getTierDisplay, getTierLabel, rConf, 'ROBBER'));
     }
   }
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // FIRST HALF SECTION
   // ═══════════════════════════════════════════════════════════════════════════
   if (picks.firstHalves && picks.firstHalves.length > 0) {
-    output.push(['', '', '', '', '', '', '', '', '', '']);
-    output.push(['──── FIRST HALF 1x2 ────', '', '', '', '', '', '', '', '', '']);
+    output.push(pad23([]));
+    output.push(pad23(['──── FIRST HALF 1x2 ────']));
     output.push(headers);
-    
+
     for (var hi = 0; hi < picks.firstHalves.length; hi++) {
       var h = picks.firstHalves[hi];
       var hConf = parseConf(h.confidence);
-      output.push([
-        h.league || '',
-        h.date || '',
-        formatTime(h.time),
-        h.match || '',
-        h.pick || '',
-        '1H 1x2',
-        formatOdds(h.odds),
-        h.tierDisplay || getTierDisplay(hConf),
-        formatEV(h.ev),
-        h.tier || getTierLabel(hConf)
-      ]);
+      slipSeq++;
+      output.push(_formatBetSlipRow_(h, 'FIRST_HALF_1X2', '1H', cfgBundle, slipSeq,
+        formatTime, formatOdds, formatEV, getTierDisplay, getTierLabel, hConf, '1H 1x2'));
     }
   }
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // FT O/U SECTION
   // ═══════════════════════════════════════════════════════════════════════════
   if (picks.ftOUs && picks.ftOUs.length > 0) {
-    output.push(['', '', '', '', '', '', '', '', '', '']);
-    output.push(['──── FULL TIME OVER/UNDER ────', '', '', '', '', '', '', '', '', '']);
+    output.push(pad23([]));
+    output.push(pad23(['──── FULL TIME OVER/UNDER ────']));
     output.push(headers);
-    
+
     for (var fi = 0; fi < picks.ftOUs.length; fi++) {
       var f = picks.ftOUs[fi];
       var fConf = parseConf(f.confidence);
-      output.push([
-        f.league || '',
-        f.date || '',
-        formatTime(f.time),
-        f.match || '',
-        f.pick || '',
-        'FT O/U',
-        formatOdds(f.odds),
-        f.tierDisplay || getTierDisplay(fConf),
-        formatEV(f.ev),
-        f.tier || getTierLabel(fConf)
-      ]);
+      slipSeq++;
+      output.push(_formatBetSlipRow_(f, 'FT_OU', 'FT', cfgBundle, slipSeq,
+        formatTime, formatOdds, formatEV, getTierDisplay, getTierLabel, fConf, 'FT O/U'));
     }
   }
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // SNIPERS SECTION
   // ═══════════════════════════════════════════════════════════════════════════
-  output.push(['', '', '', '', '', '', '', '', '', '']);
-  output.push(['──── SNIPERS (Margin + O/U) ────', '', '', '', '', '', '', '', '', '']);
+  output.push(pad23([]));
+  output.push(pad23(['──── SNIPERS (Margin + O/U) ────']));
   output.push(headers);
-  
+
   if (picks.snipers.length) {
     for (var si = 0; si < picks.snipers.length; si++) {
       var s = picks.snipers[si];
       var sConf = parseConf(s.confidence);
-      output.push([
-        s.league || '',
-        s.date || '',
-        formatTime(s.time),
-        s.match || '',
-        s.pick || '',
-        s.type || 'SNIPER',
-        formatOdds(s.odds),
-        s.tierDisplay || getTierDisplay(sConf),
-        formatEV(s.ev),
-        s.tier || getTierLabel(sConf)
-      ]);
+      var sMkt = slipMarketFromSniper_(s);
+      var sPer = slipPeriodFromSniper_(s);
+      slipSeq++;
+      output.push(_formatBetSlipRow_(s, sMkt, sPer, cfgBundle, slipSeq,
+        formatTime, formatOdds, formatEV, getTierDisplay, getTierLabel, sConf, s.type || 'SNIPER'));
     }
   } else {
-    output.push(['No Snipers found', '', '', '', '', '', '', '', '', '']);
+    output.push(pad23(['No Snipers found']));
   }
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // SUMMARY SECTION
   // ═══════════════════════════════════════════════════════════════════════════
-  var totalPicks = picks.bankers.length + picks.snipers.length + picks.robbers.length + 
-                   picks.firstHalves.length + picks.ftOUs.length;
-  
-  output.push(['', '', '', '', '', '', '', '', '', '']);
-  output.push(['──── SUMMARY ────', '', '', '', '', '', '', '', '', '']);
-  output.push(['Bankers:', String(picks.bankers.length), '', 
-               'ROBBERS:', String(picks.robbers.length), '', 
-               '1H:', String(picks.firstHalves.length), '', '']);
-  output.push(['Snipers:', String(picks.snipers.length), '', 
-               'FT O/U:', String(picks.ftOUs.length), '', '', '', '', '']);
-  output.push(['TOTAL PICKS:', String(totalPicks), '', '', '', '', '', '', '', '']);
-  
-  // ─── WRITE TO SHEET ────────────────────────────────────────────────────────
-  sheet.getRange(1, 1, output.length, headers.length).setValues(output);
-  
-  // Column widths
-  var widths = [80, 90, 70, 250, 260, 100, 60, 120, 70, 100];
+  var totalPicks = picks.bankers.length + picks.snipers.length + picks.robbers.length +
+    picks.firstHalves.length + picks.ftOUs.length;
+
+  output.push(pad23([]));
+  output.push(pad23(['──── SUMMARY ────']));
+  output.push(pad23(['Bankers:', String(picks.bankers.length), '',
+    'ROBBERS:', String(picks.robbers.length), '',
+    '1H:', String(picks.firstHalves.length), '', '']));
+  output.push(pad23(['Snipers:', String(picks.snipers.length), '',
+    'FT O/U:', String(picks.ftOUs.length), '', '', '', '', '']));
+  output.push(pad23(['TOTAL PICKS:', String(totalPicks), '', '', '', '', '', '', '', '']));
+
+  // ─── WRITE TO SHEET (append) ────────────────────────────────────────────────
+  var writeStart = lastRowBefore + 1;
+  sheet.getRange(writeStart, 1, output.length, NUM_COLS).setValues(output);
+
+  var widths = [150, 200, 220, 80, 90, 100, 100, 100, 70, 80, 90, 70, 260, 60, 90, 90, 70, 70, 120, 120, 120, 120, 120];
   for (var w = 0; w < widths.length; w++) {
     sheet.setColumnWidth(w + 1, widths[w]);
   }
-  
+
   // ─── APPLY FORMATTING ──────────────────────────────────────────────────────
   for (var row = 0; row < output.length; row++) {
-    var rowNum = row + 1;
+    var rowNum = writeStart + row;
     var firstCell = String(output[row][0] || '');
-    var typeCell = String(output[row][5] || '');
-    var range = sheet.getRange(rowNum, 1, 1, 10);
-    
+    var marketCell = String(output[row][7] || '');
+    var range = sheet.getRange(rowNum, 1, 1, NUM_COLS);
+
     if (firstCell.indexOf('Ma Golide') === 0) {
       range.setFontWeight('bold').setFontSize(12).setBackground('#4285f4').setFontColor('#ffffff');
+    } else if (firstCell.indexOf('──') === 0 && firstCell.indexOf('Bet_Slips run') !== -1) {
+      range.setFontWeight('bold').setBackground('#f1f3f4');
     } else if (firstCell.indexOf('===') === 0) {
       range.setFontWeight('bold').setBackground('#f1f3f4');
-    } else if (firstCell === 'League' || firstCell === 'Bankers:' || firstCell === 'TOTAL PICKS:') {
+    } else if (firstCell === 'Bet_Record_ID' || firstCell === 'Bankers:' || firstCell === 'TOTAL PICKS:') {
       range.setFontWeight('bold').setBackground('#e8eaed');
-    } else if (typeCell === 'BANKER') {
+    } else if (marketCell === 'BANKER') {
       range.setBackground('#e6f4ea');
-    } else if (typeCell === 'ROBBER') {
+    } else if (marketCell === 'ROBBER') {
       range.setBackground('#fce4ec').setFontWeight('bold');
-    } else if (typeCell === '1H 1x2') {
+    } else if (marketCell === 'FIRST_HALF_1X2') {
       range.setBackground('#e3f2fd');
-    } else if (typeCell === 'FT O/U') {
+    } else if (marketCell === 'FT_OU') {
       range.setBackground('#fff3e0');
-    } else if (typeCell.indexOf('STAR') !== -1) {
+    } else if (marketCell.indexOf('STAR') !== -1) {
       range.setBackground('#fff2cc').setFontWeight('bold');
-    } else if (typeCell.indexOf('HIGH QTR') !== -1) {
+    } else if (marketCell.indexOf('HIGH QTR') !== -1) {
       range.setBackground('#e8f0fe').setFontWeight('bold');
-    } else if (typeCell.indexOf('SNIPER') !== -1) {
+    } else if (marketCell.indexOf('SNIPER') !== -1) {
       range.setBackground('#fce8b2');
     }
   }
-  
-  Logger.log('[' + fn + '] Bet_Slips written: ' + output.length + ' rows, ' + totalPicks + ' total picks');
+
+  // Config stamp on each machine pick row (Bet_Record_ID contains __SLIP_)
+  for (var st = 0; st < output.length; st++) {
+    var id0 = String(output[st][0] || '');
+    if (id0.indexOf('__SLIP_') === -1) continue;
+    var absRow = writeStart + st;
+    if (typeof ConfigLedger_Satellite !== 'undefined' && ConfigLedger_Satellite.stampRow) {
+      ConfigLedger_Satellite.stampRow(sheet, absRow);
+    }
+  }
+
+  Logger.log('[' + fn + '] Bet_Slips appended from row ' + writeStart + ': ' + output.length +
+    ' rows, ' + totalPicks + ' picks, slipSeq=' + slipSeq);
 }
 
 
@@ -4235,9 +4394,9 @@ function loadBetSlipsSniperOUPicks_(ss) {
   var headerRows = findHeaderRows_(data, [
     ['league', 'competition', 'comp'],
     ['date', 'gamedate', 'game date'],
-    ['match', 'fixture', 'game'],
-    ['pick', 'selection'],
-    ['type', 'signal', 'signal type']
+    ['match', 'fixture', 'game', 'home'],
+    ['pick', 'selection', 'selection_text'],
+    ['type', 'signal', 'signal type', 'market']
   ]);
 
   if (!headerRows || headerRows.length === 0) {
@@ -4269,9 +4428,11 @@ function loadBetSlipsSniperOUPicks_(ss) {
     var dateCol   = findColumn_(hMap, ['date', 'gamedate', 'game date']);
     var timeCol   = findColumn_(hMap, ['time']);
     var matchCol  = findColumn_(hMap, ['match', 'fixture', 'game']);
-    var pickCol   = findColumn_(hMap, ['pick', 'selection']);
-    var typeCol   = findColumn_(hMap, ['type', 'signal', 'signal type']);
-    var confCol   = findColumn_(hMap, ['confidence', 'confidence %', 'conf']);
+    var homeCol   = findColumn_(hMap, ['home', 'home team']);
+    var awayCol   = findColumn_(hMap, ['away', 'away team']);
+    var pickCol   = findColumn_(hMap, ['pick', 'selection', 'selection_text']);
+    var typeCol   = findColumn_(hMap, ['type', 'signal', 'signal type', 'market']);
+    var confCol   = findColumn_(hMap, ['confidence', 'confidence %', 'conf', 'confidence_pct']);
     var evCol     = findColumn_(hMap, ['ev', 'ev%', 'expected value']);
     var tierCol   = findColumn_(hMap, ['tier']);
 
@@ -4304,6 +4465,11 @@ function loadBetSlipsSniperOUPicks_(ss) {
       var hasQuarterInType = /\bQ[1-4]\b/i.test(typeUpper);
 
       var matchStr = matchCol !== undefined ? String(row[matchCol] || '').trim() : '';
+      if (!matchStr && homeCol !== undefined && awayCol !== undefined) {
+        var hM = String(row[homeCol] || '').trim();
+        var aM = String(row[awayCol] || '').trim();
+        if (hM && aM) matchStr = hM + ' vs ' + aM;
+      }
       var pickStr  = pickCol !== undefined ? String(row[pickCol] || '').trim() : '';
       
       if (!matchStr) continue;

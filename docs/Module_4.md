@@ -4099,26 +4099,7 @@ function runCompleteAccuracyReport() {
   generateAccuracyReport(SpreadsheetApp.getActiveSpreadsheet());
 }
 
-// Helper functions (keep these as-is)
-function createHeaderMap(headerRow) {
-  const map = {};
-  for (let i = 0; i < headerRow.length; i++) {
-    const key = String(headerRow[i] || '').toLowerCase().trim();
-    if (key) map[key] = i;
-  }
-  return map;
-}
-
-function getSheetInsensitive(ss, name) {
-  const sheets = ss.getSheets();
-  const nameLower = name.toLowerCase();
-  for (let i = 0; i < sheets.length; i++) {
-    if (sheets[i].getName().toLowerCase() === nameLower) {
-      return sheets[i];
-    }
-  }
-  return null;
-}
+// createHeaderMap / getSheetInsensitive — single implementation in Module_00_Contract_Enforcer (Patch 8).
 
 /**
  * WHY: To audit the performance of the Tier 1 model and identify WHY it fails.
