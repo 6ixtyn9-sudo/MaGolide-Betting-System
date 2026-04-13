@@ -9,35 +9,173 @@
 const CONTRACT_VERSION = "MULTI-LEAGUE-STRICT-2.0";
 const CONTRACT_BUILD_DATE = "2025-04-13";
 
-// Hardcoded constants (to be extracted in Phase 3)
-const BREAKEVEN_PROB = 0.5238;
-const JUICE = 0.05;
-const FALLBACK_SD = 0.12;
-
-// Tier thresholds (to be extracted in Phase 3)
-const TIER_THRESHOLDS = {
-  strong: 0.65,
-  medium: 0.55,
-  weak: 0.45
+// Configuration cache
+let _configCache = {
+  tier1: null,
+  tier2: null,
+  accumulator: null,
+  lastLoaded: null
 };
 
-// Confidence thresholds (to be extracted in Phase 3)
-const CONFIDENCE_THRESHOLDS = {
-  min: 0.60,
-  elite: 0.85
-};
+// ============================================================================
+// CONFIGURATION LOADING FUNCTIONS
+// ============================================================================
 
-// Bucket boundaries (to be extracted in Phase 3)
-const SPREAD_BUCKETS = [-10, -7, -4, -3, -2, -1, 0, 1, 2, 3, 4, 7, 10];
-const LINE_BUCKETS = [195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250];
-const CONF_BUCKETS = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95];
+/**
+ * getConfig - Get configuration from appropriate manager
+ * @param {string} tier - Configuration tier ('tier1', 'tier2', 'accumulator')
+ * @returns {Object} Configuration object
+ */
+function getConfig(tier) {
+  const now = Date.now();
+  
+  // Refresh cache if needed (5 minute TTL)
+  if (!_configCache.lastLoaded || (now - _configCache.lastLoaded) > 300000) {
+    _configCache.lastLoaded = now;
+    _configCache.tier1 = null;
+    _configCache.tier2 = null;
+    _configCache.accumulator = null;
+  }
+  
+  // Load from appropriate manager
+  if (tier === 'tier1') {
+    if (!_configCache.tier1) {
+      _configCache.tier1 = ConfigManager_Tier1.loadConfig();
+      validateConfigState_(_configCache.tier1, 'tier1');
+    }
+    return _configCache.tier1;
+  } else if (tier === 'tier2') {
+    if (!_configCache.tier2) {
+      _configCache.tier2 = ConfigManager_Tier2.loadConfig();
+      validateConfigState_(_configCache.tier2, 'tier2');
+    }
+    return _configCache.tier2;
+  } else if (tier === 'accumulator') {
+    if (!_configCache.accumulator) {
+      _configCache.accumulator = ConfigManager_Accumulator.loadConfig();
+      validateConfigState_(_configCache.accumulator, 'accumulator');
+    }
+    return _configCache.accumulator;
+  }
+  
+  return {};
+}
 
-// League scope
-const ACTIVE_LEAGUES = ["NBA", "NFL", "MLB", "NHL", "NCAAF", "NCAAB"];
+/**
+ * getTier1Config - Get Tier1 configuration
+ */
+function getTier1Config() {
+  return getConfig('tier1');
+}
 
-// Enforcement flags
-const ENFORCE_STRICT_SIDE = true;
-const OUTRIGHT_ONLY = true;
+/**
+ * getTier2Config - Get Tier2 configuration
+ */
+function getTier2Config() {
+  return getConfig('tier2');
+}
+
+/**
+ * getAccumulatorConfig - Get Accumulator configuration
+ */
+function getAccumulatorConfig() {
+  return getConfig('accumulator');
+}
+
+// ============================================================================
+// LEGACY COMPATIBILITY (for backward compatibility)
+// ============================================================================
+
+/**
+ * getBreakevenProb - Get breakeven probability from Tier1 config
+ */
+function getBreakevenProb() {
+  return getTier1Config().BREAKEVEN_PROB || 0.5238;
+}
+
+/**
+ * getJuice - Get juice from Tier1 config
+ */
+function getJuice() {
+  return getTier1Config().JUICE || 0.05;
+}
+
+/**
+ * getFallbackSd - Get fallback SD from Tier1 config
+ */
+function getFallbackSd() {
+  return getTier1Config().FALLBACK_SD || 0.12;
+}
+
+/**
+ * getTierThresholds - Get tier thresholds from Tier1 config
+ */
+function getTierThresholds() {
+  const config = getTier1Config();
+  return {
+    strong: config.TIER_STRONG_MIN || 0.65,
+    medium: config.TIER_MEDIUM_MIN || 0.55,
+    weak: config.TIER_WEAK_MIN || 0.45
+  };
+}
+
+/**
+ * getConfidenceThresholds - Get confidence thresholds from Tier1 config
+ */
+function getConfidenceThresholds() {
+  const config = getTier1Config();
+  return {
+    min: config.CONF_MIN || 0.60,
+    elite: config.CONF_ELITE || 0.85
+  };
+}
+
+/**
+ * getSpreadBuckets - Get spread buckets from Tier2 config
+ */
+function getSpreadBuckets() {
+  return getTier2Config().SPREAD_BUCKETS || [-10, -7, -4, -3, -2, -1, 0, 1, 2, 3, 4, 7, 10];
+}
+
+/**
+ * getLineBuckets - Get line buckets from Tier2 config
+ */
+function getLineBuckets() {
+  return getTier2Config().LINE_BUCKETS || [195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250];
+}
+
+/**
+ * getConfBuckets - Get confidence buckets from Tier2 config
+ */
+function getConfBuckets() {
+  return getTier2Config().CONF_BUCKETS || [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95];
+}
+
+/**
+ * getActiveLeagues - Get active leagues from Tier1 config
+ */
+function getActiveLeagues() {
+  const leagues = getTier1Config().ACTIVE_LEAGUES;
+  if (typeof leagues === 'string') {
+    try {
+      return JSON.parse(leagues);
+    } catch (e) {
+      return ["NBA", "NFL", "MLB", "NHL", "NCAAF", "NCAAB"];
+    }
+  }
+  return leagues || ["NBA", "NFL", "MLB", "NHL", "NCAAF", "NCAAB"];
+}
+
+/**
+ * getEnforcementFlags - Get enforcement flags from Tier1 config
+ */
+function getEnforcementFlags() {
+  const config = getTier1Config();
+  return {
+    strict_side: config.ENFORCE_STRICT_SIDE !== false,
+    outright_only: config.OUTRIGHT_ONLY !== false
+  };
+}
 
 // ============================================================================
 // CANONICAL HEADER MAPS
@@ -140,29 +278,36 @@ function calculateExpectedValue_(impliedProb, confidence, line) {
 /**
  * validateConfigState_ - Validate configuration state
  * @param {Object} config - Configuration object
+ * @param {string} tier - Configuration tier
  * @returns {boolean} True if valid
  */
-function validateConfigState_(config) {
+function validateConfigState_(config, tier = 'unknown') {
   try {
-    // Check required fields
-    const required = ['version', 'active_leagues', 'tier_thresholds', 'confidence_thresholds'];
-    for (const field of required) {
-      if (!config[field]) {
-        console.warn(`Missing required config field: ${field}`);
-        return false;
-      }
-    }
-    
-    // Validate thresholds
-    if (config.tier_thresholds.strong <= config.tier_thresholds.medium ||
-        config.tier_thresholds.medium <= config.tier_thresholds.weak) {
-      console.warn('Invalid tier thresholds: must be strictly decreasing');
+    if (!config) {
+      console.warn(`No configuration provided for tier: ${tier}`);
       return false;
     }
     
-    return true;
+    // Use appropriate validator based on tier
+    if (tier === 'tier1') {
+      return ConfigManager_Tier1.validateConfigState(config);
+    } else if (tier === 'tier2') {
+      return ConfigManager_Tier2.validateConfigState(config);
+    } else if (tier === 'accumulator') {
+      return ConfigManager_Accumulator.validateConfigState(config);
+    } else {
+      // Generic validation for unknown tier
+      const required = ['version', 'LAST_UPDATED'];
+      for (const field of required) {
+        if (!config[field]) {
+          console.warn(`Missing required config field: ${field}`);
+          return false;
+        }
+      }
+      return true;
+    }
   } catch (err) {
-    console.error(`Config validation failed: ${err.message}`);
+    console.error(`Config validation failed for tier ${tier}: ${err.message}`);
     return false;
   }
 }
@@ -176,18 +321,22 @@ function normalizeConfidence_(confidence) {
   const pct = Math.max(0, Math.min(1, confidence));
   const prob = pct;
   
+  // Get thresholds from config
+  const confThresholds = getConfidenceThresholds();
+  const tierThresholds = getTierThresholds();
+  
   // Determine tier
   let tierCode, tierDisplay;
-  if (pct >= CONFIDENCE_THRESHOLDS.elite) {
+  if (pct >= confThresholds.elite) {
     tierCode = "ELITE";
     tierDisplay = "Elite (85%+)";
-  } else if (pct >= TIER_THRESHOLDS.strong) {
+  } else if (pct >= tierThresholds.strong) {
     tierCode = "STRONG";
     tierDisplay = "Strong (65-84%)";
-  } else if (pct >= TIER_THRESHOLDS.medium) {
+  } else if (pct >= tierThresholds.medium) {
     tierCode = "MEDIUM";
     tierDisplay = "Medium (55-64%)";
-  } else if (pct >= TIER_THRESHOLDS.weak) {
+  } else if (pct >= tierThresholds.weak) {
     tierCode = "WEAK";
     tierDisplay = "Weak (45-54%)";
   } else {
@@ -289,5 +438,21 @@ function runGenesis() {
     ]);
   }
   
-  console.log("Genesis complete: Satellite initialized with contract sheets");
+  // Initialize all configuration sheets
+  console.log("Initializing Tier1 configuration...");
+  const tier1Config = ConfigManager_Tier1.initializeDefaultConfig();
+  validateConfigState_(tier1Config, 'tier1');
+  
+  console.log("Initializing Tier2 configuration...");
+  const tier2Config = ConfigManager_Tier2.initializeDefaultConfig();
+  validateConfigState_(tier2Config, 'tier2');
+  
+  console.log("Initializing Accumulator configuration...");
+  const accumulatorConfig = ConfigManager_Accumulator.initializeDefaultConfig();
+  validateConfigState_(accumulatorConfig, 'accumulator');
+  
+  // Clear configuration cache to force reload
+  _configCache.lastLoaded = null;
+  
+  console.log("Genesis complete: Satellite initialized with contract sheets and configurations");
 }

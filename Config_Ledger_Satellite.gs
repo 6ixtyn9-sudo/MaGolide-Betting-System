@@ -117,28 +117,33 @@ const ConfigLedger_Satellite = {
     // Falls back gracefully if they aren't in scope.
     const safeGet = (fn) => { try { return fn(); } catch (_) { return null; } };
 
+    // Get configurations from the new config managers
+    const tier1Config = safeGet(() => getTier1Config()) || {};
+    const tier2Config = safeGet(() => getTier2Config()) || {};
+    const enforcementFlags = safeGet(() => getEnforcementFlags()) || {};
+
     return {
       // Core identity - bump this manually when logic changes materially
       version:           safeGet(() => CONTRACT_VERSION) || "MULTI-LEAGUE-STRICT-2.0",
       built_at:          safeGet(() => CONTRACT_BUILD_DATE) || new Date().toISOString().split("T")[0],
 
       // League scope
-      active_leagues:    safeGet(() => JSON.stringify(ACTIVE_LEAGUES?.sort())) || "[]",
+      active_leagues:    JSON.stringify(safeGet(() => getActiveLeagues())?.sort() || []),
 
       // Tier / confidence thresholds
-      tier_strong_min:   safeGet(() => TIER_THRESHOLDS?.strong) || null,
-      tier_medium_min:   safeGet(() => TIER_THRESHOLDS?.medium) || null,
-      conf_min:          safeGet(() => CONFIDENCE_THRESHOLDS?.min) || null,
-      conf_elite:        safeGet(() => CONFIDENCE_THRESHOLDS?.elite) || null,
+      tier_strong_min:   tier1Config.TIER_STRONG_MIN || null,
+      tier_medium_min:   tier1Config.TIER_MEDIUM_MIN || null,
+      conf_min:          tier1Config.CONF_MIN || null,
+      conf_elite:        tier1Config.CONF_ELITE || null,
 
       // Bucket boundaries (serialised for hashing)
-      spread_buckets:    safeGet(() => JSON.stringify(SPREAD_BUCKETS)) || "[]",
-      line_buckets:      safeGet(() => JSON.stringify(LINE_BUCKETS)) || "[]",
-      conf_buckets:      safeGet(() => JSON.stringify(CONF_BUCKETS)) || "[]",
+      spread_buckets:    JSON.stringify(tier2Config.SPREAD_BUCKETS || []),
+      line_buckets:      JSON.stringify(tier2Config.LINE_BUCKETS || []),
+      conf_buckets:      JSON.stringify(tier2Config.CONF_BUCKETS || []),
 
       // Enforcement flags
-      strict_side:       safeGet(() => ENFORCE_STRICT_SIDE) ?? true,
-      outright_only:     safeGet(() => OUTRIGHT_ONLY) ?? true,
+      strict_side:       enforcementFlags.strict_side ?? true,
+      outright_only:     enforcementFlags.outright_only ?? true,
     };
   },
 
