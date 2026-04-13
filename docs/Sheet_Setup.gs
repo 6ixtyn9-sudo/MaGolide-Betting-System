@@ -1212,6 +1212,13 @@ function createCoreSheets_(ss) {
     'UpcomingRaw',
     'UpcomingClean',
 
+    // Configuration sheets
+    'Config_Accumulator',
+    'Config_Tier1',
+    'Config_Tier1_Proposals',
+    'Config_Tier2',
+    'Config_Tier2_Proposals',
+
     // Historical stats
     'Stats',
     'LeagueQuarterStats',
@@ -1219,16 +1226,12 @@ function createCoreSheets_(ss) {
 
     // Tier 1 ecosystem
     'Analysis_Tier1',
-    'Config_Tier1',
-    'Config_Tier1_Proposals',
 
     // Tier 2 ecosystem
     'TeamQuarterStats_Tier2',
     'Stats_Tier2_Accuracy',
     'Stats_Tier2_Simulation',
     'Stats_Tier2_Optimization',
-    'Config_Tier2',
-    'Config_Tier2_Proposals',
 
     // Phase 4 — identity ledger (Assayer / Mothership joins)
     'Satellite_Identity'
@@ -1570,7 +1573,8 @@ function createOutputSheets_(ss) {
   
   const outputSheets = [
     'Bet_Slips',
-    'Acca_Central'
+    'Acca_Central',
+    'Config_Accumulator'
   ];
 
   let createdCount = 0;
@@ -1584,6 +1588,9 @@ function createOutputSheets_(ss) {
       skippedCount++;
     }
   }
+  
+  // Create Config_Accumulator with all configuration keys
+  createConfigAccumulatorSheet(ss);
   
   Logger.log('Output Sheets Summary: Created=' + createdCount + ', Already Existed=' + skippedCount);
 }
@@ -1620,6 +1627,108 @@ function createSheetIfMissing_(ss, sheetName) {
   return false;
 }
 
+
+/**
+ * createConfigAccumulatorSheet - Create Config_Accumulator sheet with all configuration keys
+ */
+function createConfigAccumulatorSheet(ss) {
+  var sheet = ss.getSheetByName('Config_Accumulator');
+  if (!sheet) {
+    sheet = ss.insertSheet('Config_Accumulator');
+  }
+  sheet.clear();
+
+  // Headers for Config_Accumulator
+  var headers = [
+    'config_version',
+    'rank_weight',
+    'form_weight',
+    'h2h_weight',
+    'forebet_weight',
+    'variance_weight',
+    'pctWeight',
+    'netRtgWeight',
+    'homeCourtWeight',
+    'momentumWeight',
+    'streakWeight',
+    'confidence_min',
+    'confidence_max',
+    'min_samples',
+    'confidence_scale',
+    'bayesian_blending',
+    'show_all_tiers',
+    'tier_strong_min_score',
+    'tier_medium_min_score',
+    'tier_weak_min_score',
+    'Weighted Score %',
+    'Accuracy %',
+    'Coverage %',
+    'Composite Score',
+    'Correct Predictions',
+    'Total Predictions',
+    'RISKY Count',
+    'Training Size',
+    'Data Confidence',
+    'last_updated',
+    'updated_by',
+    'home_court_weight',
+    'momentum_weight',
+    'net_rtg_weight',
+    'pct_weight',
+    'streak_weight'
+  ];
+
+  // Set headers
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#4a86e8')
+    .setFontColor('#ffffff');
+
+  // Add default configuration row with all the keys from user's example
+  var defaultConfig = [
+    'v_elite_20260315_1128', // config_version
+    '0', // rank_weight
+    '2.5', // form_weight
+    '1.5', // h2h_weight
+    '3', // forebet_weight
+    '1', // variance_weight
+    '2', // pctWeight
+    '2', // netRtgWeight
+    '1', // homeCourtWeight
+    '1', // momentumWeight
+    '1', // streakWeight
+    '50', // confidence_min
+    '95', // confidence_max
+    '1', // min_samples
+    '30', // confidence_scale
+    'TRUE', // bayesian_blending
+    'TRUE', // show_all_tiers
+    '75', // tier_strong_min_score
+    '60', // tier_medium_min_score
+    '50', // tier_weak_min_score
+    '92.0%', // Weighted Score %
+    '92.0%', // Accuracy %
+    '21.4%', // Coverage %
+    '80.21', // Composite Score
+    '23', // Correct Predictions
+    '25', // Total Predictions
+    '92', // RISKY Count
+    '117', // Training Size
+    '87.3%', // Data Confidence
+    '15/03/2026', // last_updated
+    'applyTier1ProposalToConfig (rank 1)', // updated_by
+    '1', // home_court_weight (duplicate)
+    '1', // momentum_weight (duplicate)
+    '2', // net_rtg_weight (duplicate)
+    '3', // pct_weight (duplicate)
+    '1' // streak_weight (duplicate)
+  ];
+
+  sheet.getRange(2, 1, 1, defaultConfig.length).setValues([defaultConfig]);
+
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log('[Genesis] Config_Accumulator sheet created with all configuration keys');
+}
 
 function cleanUpcomingCleanDuplicateColumns() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
