@@ -1698,8 +1698,9 @@ function createConfigAccumulatorSheet(ss) {
 }
 
 /**
- * Creates Config_Tier1 sheet with EXACT legacy template structure
- * (3 columns + all comments + exact values from Template 3.pdf)
+ * Creates Config_Tier1 sheet - COMPLETE SUPERSET
+ * 3-column legacy format + ALL sections from your live satellite example
+ * Now matches both Template 3.pdf and your actual production config
  */
 function createConfigTier1Sheet(ss) {
   let sheet = ss.getSheetByName('Config_Tier1');
@@ -1710,25 +1711,25 @@ function createConfigTier1Sheet(ss) {
 
   const data = [
     ['key', 'value', 'comment'],
-    ['config_version', '3.1', 'Increment when any Tier 1 param changes'],
+    ['config_version', 'v_elite_20260315_1128', 'Current production config version'],
     ['--- LEGACY WEIGHTS ---', '', ''],
     ['rank_weight', '0', 'Legacy: Weight of league position'],
     ['form_weight', '2.5', 'Weight of recent form'],
     ['h2h_weight', '1.5', 'Weight of head-to-head history'],
     ['forebet_weight', '3', 'Weight of external model'],
     ['variance_weight', '1', 'Penalty for volatile teams'],
-    ['--- PCT/NETRTG WEIGHTS ---', '', ''],
-    ['pctWeight', '3.5', 'Weight for PCT (Win %) difference'],
-    ['netRtgWeight', '4', 'Weight for Net Rating diff'],
-    ['homeCourtWeight', '2', 'Weight for home vs away split'],
-    ['momentumWeight', '2.5', 'Weight for Last 10 games form'],
-    ['streakWeight', '1', 'Weight for current win/loss streak'],
+    ['--- NEW WEIGHTS ---', '', ''],
+    ['pctWeight', '2', 'Weight for PCT (Win %) difference - LIVE VALUE'],
+    ['netRtgWeight', '2', 'Weight for Net Rating diff - LIVE VALUE'],
+    ['homeCourtWeight', '1', 'Weight for home vs away split - LIVE VALUE'],
+    ['momentumWeight', '1', 'Weight for Last 10 games form - LIVE VALUE'],
+    ['streakWeight', '1', 'Weight for current win/loss streak - LIVE VALUE'],
     ['--- COMMON PARAMS ---', '', ''],
-    ['home_advantage', '5', 'Home bonus (relative units)'],
-    ['score_threshold', '5', 'Min |score| for HOME/AWAY pick'],
+    ['home_advantage', '3', 'Home bonus (relative units) - LIVE VALUE'],
+    ['score_threshold', '35', 'Min |score| for HOME/AWAY pick - LIVE VALUE'],
     ['confidence_min', '50', 'Confidence floor %'],
     ['confidence_max', '95', 'Confidence ceiling %'],
-    ['--- ELITE PARAMS ---', '', ''],
+    ['--- ELITE PARAMS (NEW) ---', '', ''],
     ['min_samples', '1', 'Minimum sample size'],
     ['confidence_scale', '30', 'Scaling factor for confidence'],
     ['bayesian_blending', 'TRUE', 'Enable Bayesian blending'],
@@ -1736,7 +1737,25 @@ function createConfigTier1Sheet(ss) {
     ['--- TIER THRESHOLDS ---', '', ''],
     ['tier_strong_min_score', '75', 'Strong tier minimum score'],
     ['tier_medium_min_score', '60', 'Medium tier minimum score'],
-    ['tier_weak_min_score', '50', 'Weak tier minimum score']
+    ['tier_weak_min_score', '50', 'Weak tier minimum score'],
+    ['--- METRICS ---', '', ''],
+    ['Weighted Score %', '92.0%', 'Live performance metric'],
+    ['Accuracy %', '92.0%', 'Live accuracy metric'],
+    ['Coverage %', '21.4%', 'Live coverage metric'],
+    ['Composite Score', '80.21', 'Live composite score'],
+    ['Correct Predictions', '23', 'Live correct count'],
+    ['Total Predictions', '25', 'Live total count'],
+    ['RISKY Count', '92', 'Live risky count'],
+    ['Training Size', '117', 'Live training size'],
+    ['Data Confidence', '87.3%', 'Live data confidence'],
+    ['--- INFO ---', '', ''],
+    ['last_updated', '15/03/2026', 'Last update timestamp'],
+    ['updated_by', 'applyTier1ProposalToConfig (rank 1)', 'Last update source'],
+    ['home_court_weight', '1', 'Live home court weight'],
+    ['momentum_weight', '1', 'Live momentum weight'],
+    ['net_rtg_weight', '2', 'Live net rating weight'],
+    ['pct_weight', '3', 'Live PCT weight'],
+    ['streak_weight', '1', 'Live streak weight']
   ];
 
   sheet.getRange(1, 1, data.length, 3).setValues(data);
