@@ -1764,6 +1764,189 @@ function createConfigTier1Sheet(ss) {
   return sheet;
 }
 
+/**
+ * DYNAMIC RAW SHEET GENERATOR - Creates raw sheets based on game count input
+ * Allows user to specify number of games and auto-generates corresponding raw sheets
+ */
+function generateRawSheetsForGameCount() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  
+  // Prompt user for game count
+  const response = ui.prompt(
+    'Dynamic Raw Sheet Generator',
+    'Enter the number of games for this satellite (e.g., 3, 7, 9, 14):',
+    ui.ButtonSet.OK_CANCEL
+  );
+  
+  if (response.getSelectedButton() !== ui.Button.OK) {
+    ss.toast('Raw sheet generation cancelled', 'Ma Golide', 3);
+    return;
+  }
+  
+  const gameCount = parseInt(response.getResponseText());
+  if (isNaN(gameCount) || gameCount < 1 || gameCount > 50) {
+    ui.alert('Invalid Input', 'Please enter a valid number between 1 and 50.', ui.ButtonSet.OK);
+    return;
+  }
+  
+  // Generate raw sheets
+  const result = createRawSheetsForGames(ss, gameCount);
+  
+  ui.alert(
+    'Raw Sheets Generated',
+    `Successfully created ${result.created} raw sheets for ${gameCount} games.\n\n` +
+    `Sheets created:\n${result.sheets.join('\n')}`,
+    ui.ButtonSet.OK
+  );
+  
+  ss.toast(`Generated ${result.created} raw sheets`, 'Ma Golide', 5);
+}
+
+/**
+ * Creates raw sheets for specified game count
+ * @param {Spreadsheet} ss - Active spreadsheet
+ * @param {number} gameCount - Number of games
+ * @returns {Object} Result with created count and sheet names
+ */
+function createRawSheetsForGames(ss, gameCount) {
+  const createdSheets = [];
+  let createdCount = 0;
+  
+  // Create main Raw sheet
+  if (!ss.getSheetByName('Raw')) {
+    const rawSheet = ss.insertSheet('Raw');
+    createRawSheetStructure(rawSheet, gameCount);
+    createdSheets.push('Raw');
+    createdCount++;
+  }
+  
+  // Create RawRecentHome and RawRecentAway sheets
+  if (!ss.getSheetByName('RawRecentHome')) {
+    const recentHomeSheet = ss.insertSheet('RawRecentHome');
+    createRecentSheetStructure(recentHomeSheet, 'Home', gameCount);
+    createdSheets.push('RawRecentHome');
+    createdCount++;
+  }
+  
+  if (!ss.getSheetByName('RawRecentAway')) {
+    const recentAwaySheet = ss.insertSheet('RawRecentAway');
+    createRecentSheetStructure(recentAwaySheet, 'Away', gameCount);
+    createdSheets.push('RawRecentAway');
+    createdCount++;
+  }
+  
+  // Create RawH2H sheet
+  if (!ss.getSheetByName('RawH2H')) {
+    const h2hSheet = ss.insertSheet('RawH2H');
+    createH2HSheetStructure(h2hSheet, gameCount);
+    createdSheets.push('RawH2H');
+    createdCount++;
+  }
+  
+  Logger.log(`Created ${createdCount} raw sheets for ${gameCount} games`);
+  return {
+    created: createdCount,
+    sheets: createdSheets
+  };
+}
+
+/**
+ * Creates main Raw sheet structure
+ */
+function createRawSheetStructure(sheet, gameCount) {
+  const headers = [
+    'Date', 'League', 'Home', 'Away', 'Time', 'Status', 'Q1', 'Q2', 'Q3', 'Q4', 'FT', 'Result'
+  ];
+  
+  // Headers
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#4a86e8')
+    .setFontColor('#ffffff');
+  
+  // Create empty game rows
+  const gameData = [];
+  for (let i = 0; i < gameCount; i++) {
+    gameData.push([
+      '', '', '', '', '', '', '', '', '', '', '', ''
+    ]);
+  }
+  
+  if (gameData.length > 0) {
+    sheet.getRange(2, 1, gameData.length, headers.length).setValues(gameData);
+  }
+  
+  // Add example row
+  sheet.getRange(gameCount + 2, 1, 1, headers.length).setValues([[
+    '2026-04-13', 'NBA', 'Lakers', 'Warriors', '20:00', 'FINAL', 
+    '25', '28', '22', '24', '99', 'HOME'
+  ]]);
+  
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log(`Raw sheet created for ${gameCount} games`);
+}
+
+/**
+ * Creates Recent sheet structure (Home/Away)
+ */
+function createRecentSheetStructure(sheet, type, gameCount) {
+  const headers = [
+    'Date', 'Opponent', 'Score', 'Result', 'Location', 'Game_Number'
+  ];
+  
+  // Headers
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#ff9900')
+    .setFontColor('#ffffff');
+  
+  // Create empty recent game rows (typically 5 recent games per team)
+  const recentData = [];
+  for (let i = 0; i < Math.min(5, gameCount); i++) {
+    recentData.push([
+      '', '', '', '', type, i + 1
+    ]);
+  }
+  
+  if (recentData.length > 0) {
+    sheet.getRange(2, 1, recentData.length, headers.length).setValues(recentData);
+  }
+  
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log(`RawRecent${type} sheet created for ${gameCount} games`);
+}
+
+/**
+ * Creates H2H sheet structure
+ */
+function createH2HSheetStructure(sheet, gameCount) {
+  const headers = [
+    'Date', 'Home', 'Away', 'Home_Score', 'Away_Score', 'Result', 'Game_Number'
+  ];
+  
+  // Headers
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#6a1b9a')
+    .setFontColor('#ffffff');
+  
+  // Create empty H2H rows (typically 3 recent matchups)
+  const h2hData = [];
+  for (let i = 0; i < Math.min(3, gameCount); i++) {
+    h2hData.push([
+      '', '', '', '', '', '', i + 1
+    ]);
+  }
+  
+  if (h2hData.length > 0) {
+    sheet.getRange(2, 1, h2hData.length, headers.length).setValues(h2hData);
+  }
+  
+  sheet.autoResizeColumns(1, headers.length);
+  Logger.log(`RawH2H sheet created for ${gameCount} games`);
+}
+
 function cleanUpcomingCleanDuplicateColumns() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('UpcomingClean');
@@ -1992,6 +2175,8 @@ function onOpen(e) {
   ui.createMenu('Ma Golide')
     .addItem('RUN THE WHOLE SHEBANG', 'runTheWholeShebang')
     .addItem('Run Full Analysis (No Tuning)', 'runFullAnalysis')
+    .addSeparator()
+    .addItem('Generate Raw Sheets (Dynamic)', 'generateRawSheetsForGameCount')
     .addSeparator()
     .addSubMenu(ui.createMenu('Parsers')
       .addItem('Parse Raw', 'parseRaw')
