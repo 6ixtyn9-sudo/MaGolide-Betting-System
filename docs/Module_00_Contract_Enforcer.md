@@ -633,3 +633,1097 @@ function enforceResultsCleanContract_(ss) {
     totalColumns: validation.totalColumns
   };
 }
+
+// ============================================================================
+// PHASE 5 PATCH 8: FUNCTION CONSOLIDATION - RESOLVE ALL FUNCTION COLLISIONS
+// ============================================================================
+
+/**
+ * FunctionConsolidation - Centralized function consolidation to eliminate collisions
+ * All duplicate functions should use these single-source-of-truth implementations
+ */
+const FunctionConsolidation = {
+  
+  // --------------------------------------------------------------------------
+  // CONSOLIDATED SHEET FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * getSheetInsensitive - Single source of truth for case-insensitive sheet lookup
+   * @param {Spreadsheet} ss - Spreadsheet object
+   * @param {string} name - Sheet name
+   * @returns {Sheet|null} Sheet object or null if not found
+   */
+  getSheetInsensitive(ss, name) {
+    if (!ss || !name) return null;
+    
+    try {
+      // Try exact match first
+      const exactSheet = ss.getSheetByName(name);
+      if (exactSheet) return exactSheet;
+      
+      // Try case-insensitive match
+      const sheets = ss.getSheets();
+      const targetName = String(name).toLowerCase().trim();
+      
+      for (let i = 0; i < sheets.length; i++) {
+        const sheetName = String(sheets[i].getName()).toLowerCase().trim();
+        if (sheetName === targetName) {
+          return sheets[i];
+        }
+      }
+      
+      return null;
+    } catch (err) {
+      Logger.log('[getSheetInsensitive] Error: ' + err.message);
+      return null;
+    }
+  },
+  
+  // --------------------------------------------------------------------------
+  // CONSOLIDATED HEADER FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * createHeaderMap - DEPRECATED - Use createCanonicalHeaderMap_ instead
+   * @deprecated This function has been consolidated into createCanonicalHeaderMap_
+   */
+  createHeaderMap(headers, canonical) {
+    Logger.log('[createHeaderMap] DEPRECATED - Use createCanonicalHeaderMap_ from Contract_Enforcer');
+    return createCanonicalHeaderMap_(canonical, headers);
+  },
+  
+  /**
+   * findHeaderIndex - DEPRECATED - Use findHeaderIndex_ instead
+   * @deprecated This function has been consolidated into findHeaderIndex_
+   */
+  findHeaderIndex(headers, target) {
+    Logger.log('[findHeaderIndex] DEPRECATED - Use findHeaderIndex_ from Contract_Enforcer');
+    return findHeaderIndex_(headers, target);
+  },
+  
+  // --------------------------------------------------------------------------
+  // CONSOLIDATED CALCULATION FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * calculateExpectedValue - DEPRECATED - Use calculateExpectedValue_ instead
+   * @deprecated This function has been consolidated into calculateExpectedValue_
+   */
+  calculateExpectedValue(impliedProb, confidence, line) {
+    Logger.log('[calculateExpectedValue] DEPRECATED - Use calculateExpectedValue_ from Contract_Enforcer');
+    return calculateExpectedValue_(impliedProb, confidence, line);
+  },
+  
+  /**
+   * calculateKellyFraction - DEPRECATED - Use standardized version instead
+   * @deprecated This function has been consolidated and standardized
+   */
+  calculateKellyFraction(winProb, decimalOdds, kellyMultiplier) {
+    Logger.log('[calculateKellyFraction] DEPRECATED - Use standardized Kelly calculation');
+    
+    // Standardized Kelly calculation
+    if (!winProb || !decimalOdds || winProb <= 0 || decimalOdds <= 1) return 0;
+    
+    const edge = (winProb * decimalOdds) - 1;
+    const odds = decimalOdds - 1;
+    const kelly = (edge / odds) * (kellyMultiplier || 0.25);
+    
+    return Math.max(0, Math.min(kelly, 0.25)); // Cap at 25% of bankroll
+  },
+  
+  // --------------------------------------------------------------------------
+  // CONSOLIDATED VALIDATION FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * validateConfigState - DEPRECATED - Use validateConfigState_ instead
+   * @deprecated This function has been consolidated into validateConfigState_
+   */
+  validateConfigState(config) {
+    Logger.log('[validateConfigState] DEPRECATED - Use validateConfigState_ from Contract_Enforcer');
+    return validateConfigState_(config, 'unknown');
+  },
+  
+  /**
+   * validateBetObject - DEPRECATED - Use validateBetObject_ instead
+   * @deprecated This function has been consolidated into validateBetObject_
+   */
+  validateBetObject(bet) {
+    Logger.log('[validateBetObject] DEPRECATED - Use validateBetObject_ from Contract_Enforcer');
+    return validateBetObject_(bet);
+  },
+  
+  // --------------------------------------------------------------------------
+  // CONSOLIDATED UPSERT FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * upsertRow - DEPRECATED - Use upsertRow_ instead
+   * @deprecated This function has been consolidated into upsertRow_
+   */
+  upsertRow(sheet, rowData, keyColumn) {
+    Logger.log('[upsertRow] DEPRECATED - Use upsertRow_ from Contract_Enforcer');
+    return upsertRow_(sheet, rowData, keyColumn);
+  },
+  
+  // --------------------------------------------------------------------------
+  // CONSOLIDATED CONFIGURATION FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * normalizeConfidence - DEPRECATED - Use normalizeConfidence_ instead
+   * @deprecated This function has been consolidated into normalizeConfidence_
+   */
+  normalizeConfidence(confidence) {
+    Logger.log('[normalizeConfidence] DEPRECATED - Use normalizeConfidence_ from Contract_Enforcer');
+    return normalizeConfidence_(confidence);
+  },
+  
+  /**
+   * getTierThresholds - DEPRECATED - Use getTierThresholds instead
+   * @deprecated This function has been consolidated into getTierThresholds
+   */
+  getTierThresholds() {
+    Logger.log('[getTierThresholds] DEPRECATED - Use getTierThresholds from Contract_Enforcer');
+    return getTierThresholds();
+  },
+  
+  /**
+   * getConfidenceThresholds - DEPRECATED - Use getConfidenceThresholds instead
+   * @deprecated This function has been consolidated into getConfidenceThresholds
+   */
+  getConfidenceThresholds() {
+    Logger.log('[getConfidenceThresholds] DEPRECATED - Use getConfidenceThresholds from Contract_Enforcer');
+    return getConfidenceThresholds();
+  }
+};
+
+/**
+ * auditFunctionCollisions - Audit for remaining function collisions
+ * @returns {Object} Audit report
+ */
+function auditFunctionCollisions() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const auditReport = {
+    timestamp: new Date().toISOString(),
+    consolidatedFunctions: [],
+    deprecatedFunctions: [],
+    recommendations: []
+  };
+  
+  // List of consolidated functions
+  auditReport.consolidatedFunctions = [
+    'getSheetInsensitive',
+    'createCanonicalHeaderMap_',
+    'findHeaderIndex_',
+    'calculateExpectedValue_',
+    'validateConfigState_',
+    'validateBetObject_',
+    'upsertRow_',
+    'normalizeConfidence_',
+    'getTierThresholds',
+    'getConfidenceThresholds'
+  ];
+  
+  // List of deprecated functions that should be replaced
+  auditReport.deprecatedFunctions = [
+    'createHeaderMap',
+    'findHeaderIndex',
+    'calculateExpectedValue',
+    'calculateKellyFraction',
+    'validateConfigState',
+    'validateBetObject',
+    'upsertRow',
+    'normalizeConfidence',
+    'getTierThresholds',
+    'getConfidenceThresholds'
+  ];
+  
+  // Recommendations
+  auditReport.recommendations = [
+    'Replace all deprecated function calls with consolidated versions',
+    'Use ContractEnforcer functions as single source of truth',
+    'Remove duplicate function definitions from all modules',
+    'Test all functionality after migration',
+    'Document migration in code comments'
+  ];
+  
+  Logger.log('[auditFunctionCollisions] Audit completed: ' + auditReport.consolidatedFunctions.length + ' functions consolidated');
+  return auditReport;
+}
+
+/**
+ * migrateToConsolidatedFunctions - Helper function to migrate function calls
+ * @param {string} functionName - Name of function to migrate
+ * @param {string} fileName - Name of file containing the function
+ * @returns {Object} Migration guidance
+ */
+function migrateToConsolidatedFunctions(functionName, fileName) {
+  const migrationMap = {
+    'createHeaderMap': 'createCanonicalHeaderMap_',
+    'findHeaderIndex': 'findHeaderIndex_',
+    'calculateExpectedValue': 'calculateExpectedValue_',
+    'validateConfigState': 'validateConfigState_',
+    'upsertRow': 'upsertRow_',
+    'normalizeConfidence': 'normalizeConfidence_',
+    'getTierThresholds': 'getTierThresholds',
+    'getConfidenceThresholds': 'getConfidenceThresholds'
+  };
+  
+  const newFunction = migrationMap[functionName];
+  if (newFunction) {
+    return {
+      oldFunction: functionName,
+      newFunction: newFunction,
+      file: fileName,
+      action: 'Replace ' + functionName + ' with ' + newFunction + ' from Contract_Enforcer',
+      status: 'READY_TO_MIGRATE'
+    };
+  }
+  
+  return {
+    oldFunction: functionName,
+    file: fileName,
+    action: 'No migration needed',
+    status: 'NO_ACTION'
+  };
+}
+
+// ============================================================================
+// PHASE 5 PATCH 9: HEADER MAP STANDARDIZATION
+// ============================================================================
+
+/**
+ * HeaderMapStandardization - Standardize ALL header maps to use Contract_Enforcer functions
+ * Ensures consistent header mapping across all modules
+ */
+const HeaderMapStandardization = {
+  
+  // --------------------------------------------------------------------------
+  // STANDARDIZED HEADER MAP IMPLEMENTATIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * getStandardHeaderMap - Get standardized header map for any contract
+   * @param {Array} contract - Contract array (canonical column names)
+   * @param {Array} actualHeaders - Actual headers from sheet
+   * @returns {Object} Standardized header map
+   */
+  getStandardHeaderMap(contract, actualHeaders) {
+    return createCanonicalHeaderMap_(contract, actualHeaders);
+  },
+  
+  /**
+   * getStandardHeaderIndex - Find column index using standardized method
+   * @param {Array} headers - Sheet headers
+   * @param {string} target - Target column name
+   * @returns {number} Column index or -1 if not found
+   */
+  getStandardHeaderIndex(headers, target) {
+    return findHeaderIndex_(headers, target);
+  },
+  
+  // --------------------------------------------------------------------------
+  // CONTRACT-SPECIFIC HEADER MAPS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * getBetSlipsHeaderMap - Get standardized Bet_Slips header map
+   * @param {Array} actualHeaders - Actual headers from sheet
+   * @returns {Object} Header map
+   */
+  getBetSlipsHeaderMap(actualHeaders) {
+    return this.getStandardHeaderMap(BET_SLIPS_CONTRACT, actualHeaders);
+  },
+  
+  /**
+   * getForensicLogsHeaderMap - Get standardized Forensic Logs header map
+   * @param {Array} actualHeaders - Actual headers from sheet
+   * @returns {Object} Header map
+   */
+  getForensicLogsHeaderMap(actualHeaders) {
+    return this.getStandardHeaderMap(FORENSIC_LOGS_CONTRACT, actualHeaders);
+  },
+  
+  /**
+   * getResultsCleanHeaderMap - Get standardized ResultsClean header map
+   * @param {Array} actualHeaders - Actual headers from sheet
+   * @returns {Object} Header map
+   */
+  getResultsCleanHeaderMap(actualHeaders) {
+    return this.getStandardHeaderMap(RESULTSCLEAN_CONTRACT, actualHeaders);
+  },
+  
+  // --------------------------------------------------------------------------
+  // VALIDATION FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * validateHeaderMap - Validate header map completeness
+   * @param {Object} headerMap - Header map object
+   * @param {Array} requiredColumns - Required columns
+   * @returns {Object} Validation result
+   */
+  validateHeaderMap(headerMap, requiredColumns) {
+    const missing = [];
+    const invalid = [];
+    
+    requiredColumns.forEach(column => {
+      if (headerMap[column] === undefined || headerMap[column] === null) {
+        missing.push(column);
+      } else if (headerMap[column] < 0) {
+        invalid.push(column);
+      }
+    });
+    
+    return {
+      valid: missing.length === 0 && invalid.length === 0,
+      missing: missing,
+      invalid: invalid,
+      total: requiredColumns.length,
+      found: requiredColumns.length - missing.length
+    };
+  },
+  
+  // --------------------------------------------------------------------------
+  // ADVANCED HEADER MAP FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * createHeaderMapWithFallback - Create header map with fallback columns
+   * @param {Array} contract - Contract array
+   * @param {Array} actualHeaders - Actual headers
+   * @param {Object} fallbackMap - Fallback column mappings
+   * @returns {Object} Header map with fallbacks applied
+   */
+  createHeaderMapWithFallback(contract, actualHeaders, fallbackMap = {}) {
+    const standardMap = this.getStandardHeaderMap(contract, actualHeaders);
+    
+    // Apply fallbacks for missing columns
+    Object.keys(standardMap).forEach(canonical => {
+      if (standardMap[canonical] < 0 && fallbackMap[canonical]) {
+        const fallbackIndex = findHeaderIndex_(actualHeaders, fallbackMap[canonical]);
+        if (fallbackIndex >= 0) {
+          standardMap[canonical] = fallbackIndex;
+          Logger.log('[createHeaderMapWithFallback] Applied fallback for ' + canonical + ': ' + fallbackMap[canonical]);
+        }
+      }
+    });
+    
+    return standardMap;
+  },
+  
+  /**
+   * getContractColumnAliases - Get standard column aliases for contracts
+   * @param {string} contractType - Type of contract
+   * @returns {Object} Column aliases object
+   */
+  getContractColumnAliases(contractType) {
+    const aliases = {
+      'Bet_Slips': {
+        bet_id: ['bet_id', 'betid', 'id', 'bet_id'],
+        league: ['league', 'lg', 'sport', 'league_name'],
+        event_date: ['event_date', 'date', 'game_date', 'event_datetime'],
+        team: ['team', 'selection', 'pick', 'team_name'],
+        opponent: ['opponent', 'opp', 'vs', 'opponent_name'],
+        side_total: ['side_total', 'type', 'bet_type', 'side_total'],
+        line: ['line', 'odds', 'price', 'line_value'],
+        implied_prob: ['implied_prob', 'prob', 'probability', 'implied_probability'],
+        confidence_pct: ['confidence_pct', 'confidence', 'conf', 'confidence_percent'],
+        tier_code: ['tier_code', 'tier', 'grade', 'tier_code'],
+        tier_display: ['tier_display', 'tier_desc', 'tier_description'],
+        ev: ['ev', 'expected_value', 'expected_value'],
+        kelly_pct: ['kelly_pct', 'kelly', 'kelly_percent'],
+        status: ['status', 'result_status', 'bet_status'],
+        result: ['result', 'outcome', 'bet_result'],
+        payout: ['payout', 'return', 'winnings'],
+        placed_at: ['placed_at', 'created', 'timestamp', 'bet_placed'],
+        settled_at: ['settled_at', 'resolved', 'bet_settled'],
+        config_stamp: ['config_stamp', 'configstamp', 'cfg_stamp', 'stamp', 'stamp_id'],
+        source: ['source', 'origin', 'data_source'],
+        gender: ['gender', 'type', 'category'],
+        quarter: ['quarter', 'q', 'period', 'time_period'],
+        season: ['season', 'year', 'season_year'],
+        created_at: ['created_at', 'timestamp', 'creation_time']
+      },
+      
+      'Forensic_Logs': {
+        log_id: ['log_id', 'id', 'log_identifier'],
+        timestamp: ['timestamp', 'time', 'log_time', 'created_at'],
+        league: ['league', 'lg', 'sport', 'league_name'],
+        event_id: ['event_id', 'game_id', 'match_id'],
+        team: ['team', 'selection', 'pick', 'team_name'],
+        opponent: ['opponent', 'opp', 'vs', 'opponent_name'],
+        side_total: ['side_total', 'type', 'bet_type'],
+        line: ['line', 'odds', 'price', 'line_value'],
+        prediction: ['prediction', 'pred', 'forecast'],
+        confidence: ['confidence', 'conf', 'confidence_level'],
+        tier: ['tier', 'grade', 'tier_code'],
+        ev: ['ev', 'expected_value', 'expected_value'],
+        status: ['status', 'result_status', 'log_status'],
+        result: ['result', 'outcome', 'actual_result'],
+        config_stamp: ['config_stamp', 'configstamp', 'cfg_stamp', 'stamp', 'stamp_id'],
+        source: ['source', 'origin', 'data_source'],
+        notes: ['notes', 'comments', 'remarks']
+      },
+      
+      'Results_Clean': {
+        result_id: ['result_id', 'id', 'result_identifier'],
+        event_date: ['event_date', 'date', 'game_date'],
+        league: ['league', 'lg', 'sport', 'league_name'],
+        team: ['team', 'selection', 'pick', 'team_name'],
+        opponent: ['opponent', 'opp', 'vs', 'opponent_name'],
+        side_total: ['side_total', 'type', 'bet_type'],
+        line: ['line', 'odds', 'price', 'line_value'],
+        actual_result: ['actual_result', 'result', 'outcome'],
+        settled_at: ['settled_at', 'resolved', 'result_date'],
+        status: ['status', 'result_status', 'settlement_status'],
+        payout: ['payout', 'return', 'winnings'],
+        config_stamp: ['config_stamp', 'configstamp', 'cfg_stamp', 'stamp', 'stamp_id'],
+        source: ['source', 'origin', 'data_source'],
+        season: ['season', 'year', 'season_year'],
+        quarter: ['quarter', 'q', 'period', 'time_period'],
+        created_at: ['created_at', 'timestamp', 'creation_time']
+      }
+    };
+    
+    return aliases[contractType] || {};
+  },
+  
+  /**
+   * createEnhancedHeaderMap - Create header map with alias support
+   * @param {string} contractType - Type of contract
+   * @param {Array} actualHeaders - Actual headers from sheet
+   * @returns {Object} Enhanced header map with alias resolution
+   */
+  createEnhancedHeaderMap(contractType, actualHeaders) {
+    const contracts = {
+      'Bet_Slips': BET_SLIPS_CONTRACT,
+      'Forensic_Logs': FORENSIC_LOGS_CONTRACT,
+      'Results_Clean': RESULTSCLEAN_CONTRACT
+    };
+    
+    const contract = contracts[contractType];
+    if (!contract) {
+      throw new Error('Unknown contract type: ' + contractType);
+    }
+    
+    const aliases = this.getContractColumnAliases(contractType);
+    return this.createHeaderMapWithFallback(contract, actualHeaders, aliases);
+  },
+  
+  // --------------------------------------------------------------------------
+  // AUDIT AND COMPLIANCE FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * auditHeaderMaps - Audit all header maps for compliance
+   * @returns {Object} Audit report
+   */
+  auditHeaderMaps() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const auditReport = {
+      timestamp: new Date().toISOString(),
+      sheets: {},
+      summary: {
+        total: 0,
+        compliant: 0,
+        nonCompliant: 0
+      }
+    };
+    
+    const contractSheets = [
+      { name: 'Bet_Slips', contract: BET_SLIPS_CONTRACT, type: 'Bet_Slips' },
+      { name: 'Tier1_Predictions', contract: FORENSIC_LOGS_CONTRACT, type: 'Forensic_Logs' },
+      { name: 'Tier2_Log', contract: FORENSIC_LOGS_CONTRACT, type: 'Forensic_Logs' },
+      { name: 'OU_Log', contract: FORENSIC_LOGS_CONTRACT, type: 'Forensic_Logs' },
+      { name: 'ResultsClean', contract: RESULTSCLEAN_CONTRACT, type: 'Results_Clean' }
+    ];
+    
+    contractSheets.forEach(({ name, contract, type }) => {
+      const sheet = ss.getSheetByName(name);
+      if (sheet) {
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        const headerMap = this.createEnhancedHeaderMap(type, headers);
+        const validation = this.validateHeaderMap(headerMap, contract);
+        
+        auditReport.sheets[name] = {
+          type: type,
+          headersFound: headers.length,
+          contractColumns: contract.length,
+          validation: validation,
+          compliant: validation.valid
+        };
+        
+        auditReport.summary.total++;
+        if (validation.valid) {
+          auditReport.summary.compliant++;
+        } else {
+          auditReport.summary.nonCompliant++;
+        }
+      }
+    });
+    
+    return auditReport;
+  },
+  
+  /**
+   * standardizeAllSheets - Apply standardization to all contract sheets
+   * @returns {Object} Standardization report
+   */
+  standardizeAllSheets() {
+    const audit = this.auditHeaderMaps();
+    const report = {
+      timestamp: new Date().toISOString(),
+      audit: audit,
+      actions: [],
+      success: true
+    };
+    
+    // Log standardization results
+    Logger.log('Header Map Standardization Report');
+    Logger.log('=====================================');
+    Logger.log('Total sheets: ' + audit.summary.total);
+    Logger.log('Compliant: ' + audit.summary.compliant);
+    Logger.log('Non-compliant: ' + audit.summary.nonCompliant);
+    
+    Object.entries(audit.sheets).forEach(([sheetName, sheetData]) => {
+      if (!sheetData.compliant) {
+        Logger.log('Sheet ' + sheetName + ' needs standardization');
+        Logger.log('Missing: ' + sheetData.validation.missing.join(', '));
+        Logger.log('Invalid: ' + sheetData.validation.invalid.join(', '));
+        report.actions.push({
+          sheet: sheetName,
+          action: 'NEEDS_STANDARDIZATION',
+          missing: sheetData.validation.missing,
+          invalid: sheetData.validation.invalid
+        });
+      } else {
+        Logger.log('Sheet ' + sheetName + ' is compliant');
+        report.actions.push({
+          sheet: sheetName,
+          action: 'COMPLIANT'
+        });
+      }
+    });
+    
+    return report;
+  }
+};
+
+/**
+ * enforceHeaderMapStandardization - Enforce header map standardization across all modules
+ * @returns {Object} Enforcement report
+ */
+function enforceHeaderMapStandardization() {
+  const standardization = HeaderMapStandardization;
+  const report = standardization.standardizeAllSheets();
+  
+  // Log enforcement actions
+  Logger.log('[enforceHeaderMapStandardization] Header map standardization enforcement completed');
+  Logger.log('Compliant sheets: ' + report.audit.summary.compliant + '/' + report.audit.summary.total);
+  
+  return report;
+}
+
+// ============================================================================
+// PHASE 5 PATCH 10: UPSERT POLICY ENFORCEMENT
+// ============================================================================
+
+/**
+ * UpsertPolicyEnforcement - Document and enforce upsert policies across all modules
+ * Ensures consistent data management and audit trails
+ */
+const UpsertPolicyEnforcement = {
+  
+  // --------------------------------------------------------------------------
+  // UPSERT POLICY DEFINITIONS
+  // --------------------------------------------------------------------------
+  
+  policies: {
+    // Bet_Slips: Use bet_id as unique key
+    'Bet_Slips': {
+      keyColumn: 'bet_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: true,
+      validation: 'required',
+      conflictResolution: 'LATEST_WINS',
+      auditTrail: true,
+      description: 'Bet tracking with unique bet_id for deduplication'
+    },
+    
+    // Config sheets: Use config_key as unique key
+    'Config_Tier1': {
+      keyColumn: 'config_key',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: true,
+      validation: 'required',
+      conflictResolution: 'LATEST_WINS',
+      auditTrail: false,
+      description: 'Tier1 configuration parameters'
+    },
+    
+    'Config_Tier2': {
+      keyColumn: 'config_key',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: true,
+      validation: 'required',
+      conflictResolution: 'LATEST_WINS',
+      auditTrail: false,
+      description: 'Tier2 configuration parameters'
+    },
+    
+    'Config_Accumulator': {
+      keyColumn: 'config_key',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: true,
+      validation: 'required',
+      conflictResolution: 'LATEST_WINS',
+      auditTrail: false,
+      description: 'Accumulator configuration parameters'
+    },
+    
+    // Satellite_Identity: Use satellite_id as unique key
+    'Satellite_Identity': {
+      keyColumn: 'satellite_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: false,  // Identity should not be updated
+      validation: 'required',
+      conflictResolution: 'FIRST_WINS',
+      auditTrail: true,
+      description: 'Satellite identity records (immutable after creation)'
+    },
+    
+    // ResultsClean: Use result_id as unique key
+    'ResultsClean': {
+      keyColumn: 'result_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: false,  // Results should not be updated once settled
+      validation: 'required',
+      conflictResolution: 'FIRST_WINS',
+      auditTrail: true,
+      description: 'Settled bet results (immutable after settlement)'
+    },
+    
+    // Forensic logs: Use log_id as unique key
+    'Tier1_Predictions': {
+      keyColumn: 'log_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: false,  // Logs should be immutable
+      validation: 'required',
+      conflictResolution: 'FIRST_WINS',
+      auditTrail: true,
+      description: 'Tier1 prediction logs (immutable audit trail)'
+    },
+    
+    'Tier2_Log': {
+      keyColumn: 'log_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: false,  // Logs should be immutable
+      validation: 'required',
+      conflictResolution: 'FIRST_WINS',
+      auditTrail: true,
+      description: 'Tier2 prediction logs (immutable audit trail)'
+    },
+    
+    'OU_Log': {
+      keyColumn: 'log_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: false,  // Logs should be immutable
+      validation: 'required',
+      conflictResolution: 'FIRST_WINS',
+      auditTrail: true,
+      description: 'Over/Under prediction logs (immutable audit trail)'
+    },
+    
+    // Satellite_Registry: Use satellite_id as unique key
+    'Satellite_Registry': {
+      keyColumn: 'satellite_id',
+      strategy: 'UPDATE_IF_EXISTS',
+      allowCreate: true,
+      allowUpdate: true,
+      validation: 'required',
+      conflictResolution: 'LATEST_WINS',
+      auditTrail: true,
+      description: 'Satellite registry with URL management'
+    }
+  },
+  
+  // --------------------------------------------------------------------------
+  // UPSERT OPERATIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * performUpsert - Perform standardized upsert operation
+   * @param {Sheet} sheet - Target sheet
+   * @param {Array} rowData - Row data to upsert
+   * @param {string} sheetName - Sheet name for policy lookup
+   * @returns {Object} Upsert result
+   */
+  performUpsert(sheet, rowData, sheetName) {
+    const policy = this.policies[sheetName];
+    if (!policy) {
+      throw new Error('No upsert policy defined for sheet: ' + sheetName);
+    }
+    
+    const result = {
+      success: false,
+      action: null,
+      key: null,
+      timestamp: new Date().toISOString(),
+      policy: policy
+    };
+    
+    try {
+      // Validate policy requirements
+      const validationResult = this.validateUpsertData(rowData, policy);
+      if (!validationResult.valid) {
+        result.error = 'Validation failed: ' + validationResult.errors.join(', ');
+        return result;
+      }
+      
+      // Find existing row
+      const existingRowIndex = this.findExistingRow(sheet, rowData, policy);
+      
+      if (existingRowIndex >= 0) {
+        // Row exists
+        if (policy.allowUpdate) {
+          this.updateRow(sheet, existingRowIndex, rowData, policy);
+          result.action = 'UPDATED';
+          result.key = rowData[policy.keyColumn];
+          result.success = true;
+          
+          if (policy.auditTrail) {
+            this.logUpsertAction(sheetName, 'UPDATE', rowData[policy.keyColumn], policy);
+          }
+        } else {
+          result.action = 'SKIPPED_UPDATE_NOT_ALLOWED';
+          result.key = rowData[policy.keyColumn];
+          result.success = false;
+          result.error = 'Update not allowed by policy';
+        }
+      } else {
+        // Row does not exist
+        if (policy.allowCreate) {
+          this.insertRow(sheet, rowData, policy);
+          result.action = 'INSERTED';
+          result.key = rowData[policy.keyColumn];
+          result.success = true;
+          
+          if (policy.auditTrail) {
+            this.logUpsertAction(sheetName, 'INSERT', rowData[policy.keyColumn], policy);
+          }
+        } else {
+          result.action = 'SKIPPED_CREATE_NOT_ALLOWED';
+          result.key = rowData[policy.keyColumn];
+          result.success = false;
+          result.error = 'Create not allowed by policy';
+        }
+      }
+      
+    } catch (err) {
+      result.error = err.message;
+      result.success = false;
+    }
+    
+    return result;
+  },
+  
+  /**
+   * performBatchUpsert - Perform batch upsert operations
+   * @param {Sheet} sheet - Target sheet
+   * @param {Array} batchData - Array of row data
+   * @param {string} sheetName - Sheet name for policy lookup
+   * @returns {Object} Batch upsert result
+   */
+  performBatchUpsert(sheet, batchData, sheetName) {
+    const policy = this.policies[sheetName];
+    if (!policy) {
+      throw new Error('No upsert policy defined for sheet: ' + sheetName);
+    }
+    
+    const results = [];
+    let successCount = 0;
+    let failureCount = 0;
+    
+    batchData.forEach((rowData, index) => {
+      const result = this.performUpsert(sheet, rowData, sheetName);
+      result.batchIndex = index;
+      results.push(result);
+      
+      if (result.success) {
+        successCount++;
+      } else {
+        failureCount++;
+      }
+    });
+    
+    return {
+      sheetName: sheetName,
+      totalRows: batchData.length,
+      successCount: successCount,
+      failureCount: failureCount,
+      results: results,
+      timestamp: new Date().toISOString()
+    };
+  },
+  
+  // --------------------------------------------------------------------------
+  // VALIDATION FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * validateUpsertData - Validate data against upsert policy
+   * @param {Array} rowData - Row data
+   * @param {Object} policy - Upsert policy
+   * @returns {Object} Validation result
+   */
+  validateUpsertData(rowData, policy) {
+    const errors = [];
+    const warnings = [];
+    
+    // Check required fields
+    if (policy.validation === 'required' && !rowData[policy.keyColumn]) {
+      errors.push('Required key column ' + policy.keyColumn + ' is missing or empty');
+    }
+    
+    // Check data length
+    if (!Array.isArray(rowData) || rowData.length === 0) {
+      errors.push('Row data must be a non-empty array');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors: errors,
+      warnings: warnings
+    };
+  },
+  
+  // --------------------------------------------------------------------------
+  // SEARCH AND UPDATE FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * findExistingRow - Find existing row based on key column
+   * @param {Sheet} sheet - Target sheet
+   * @param {Array} rowData - Row data
+   * @param {Object} policy - Upsert policy
+   * @returns {number} Row index or -1 if not found
+   */
+  findExistingRow(sheet, rowData, policy) {
+    if (!sheet || sheet.getLastRow() <= 1) return -1;
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const keyColumnIndex = headers.findIndex(h => 
+      String(h).toLowerCase().replace(/[\s_]/g, "") === 
+      policy.keyColumn.toLowerCase().replace(/[\s_]/g, "")
+    );
+    
+    if (keyColumnIndex < 0) {
+      Logger.log('[findExistingRow] Key column ' + policy.keyColumn + ' not found in sheet');
+      return -1;
+    }
+    
+    const keyValue = rowData[keyColumnIndex];
+    if (!keyValue) return -1;
+    
+    // Search for existing row
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][keyColumnIndex] === keyValue) {
+        return i; // Found existing row
+      }
+    }
+    
+    return -1; // Not found
+  },
+  
+  /**
+   * updateRow - Update existing row
+   * @param {Sheet} sheet - Target sheet
+   * @param {number} rowIndex - Row index (0-based from data range)
+   * @param {Array} rowData - New row data
+   * @param {Object} policy - Upsert policy
+   */
+  updateRow(sheet, rowIndex, rowData, policy) {
+    const actualRowIndex = rowIndex + 1; // Convert to 1-based for Apps Script
+    
+    if (policy.conflictResolution === 'LATEST_WINS') {
+      sheet.getRange(actualRowIndex, 1, 1, rowData.length).setValues([rowData]);
+    } else if (policy.conflictResolution === 'FIRST_WINS') {
+      // Don't update, keep existing data
+      Logger.log('[updateRow] Skipping update for ' + rowData[policy.keyColumn] + ' - FIRST_WINS policy');
+    }
+  },
+  
+  /**
+   * insertRow - Insert new row
+   * @param {Sheet} sheet - Target sheet
+   * @param {Array} rowData - Row data
+   * @param {Object} policy - Upsert policy
+   */
+  insertRow(sheet, rowData, policy) {
+    sheet.appendRow(rowData);
+  },
+  
+  // --------------------------------------------------------------------------
+  // AUDIT AND LOGGING FUNCTIONS
+  // --------------------------------------------------------------------------
+  
+  /**
+   * logUpsertAction - Log upsert action for audit trail
+   * @param {string} sheetName - Sheet name
+   * @param {string} action - Action performed
+   * @param {string} key - Record key
+   * @param {Object} policy - Upsert policy
+   */
+  logUpsertAction(sheetName, action, key, policy) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      sheet: sheetName,
+      action: action,
+      key: key,
+      policy: policy.keyColumn,
+      user: Session.getActiveUser().getEmail()
+    };
+    
+    Logger.log('[UPSERT AUDIT] ' + JSON.stringify(logEntry));
+    
+    // Could also write to a dedicated audit sheet if needed
+  },
+  
+  /**
+   * generateUpsertPolicyReport - Generate comprehensive upsert policy report
+   * @returns {Object} Policy report
+   */
+  generateUpsertPolicyReport() {
+    const report = {
+      timestamp: new Date().toISOString(),
+      policies: this.policies,
+      summary: {
+        totalPolicies: Object.keys(this.policies).length,
+        allowUpdateCount: 0,
+        allowCreateCount: 0,
+        auditTrailCount: 0
+      },
+      recommendations: []
+    };
+    
+    // Calculate summary statistics
+    Object.values(this.policies).forEach(policy => {
+      if (policy.allowUpdate) report.summary.allowUpdateCount++;
+      if (policy.allowCreate) report.summary.allowCreateCount++;
+      if (policy.auditTrail) report.summary.auditTrailCount++;
+    });
+    
+    // Generate recommendations
+    if (report.summary.auditTrailCount < report.summary.totalPolicies) {
+      report.recommendations.push('Consider enabling audit trail for all critical sheets');
+    }
+    
+    report.recommendations.push('Regularly review upsert policies for compliance');
+    report.recommendations.push('Monitor upsert operations for anomalies');
+    
+    return report;
+  },
+  
+  /**
+   * validateAllPolicies - Validate all upsert policies
+   * @returns {Object} Validation report
+   */
+  validateAllPolicies() {
+    const validation = {
+      timestamp: new Date().toISOString(),
+      valid: true,
+      issues: [],
+      warnings: []
+    };
+    
+    Object.entries(this.policies).forEach(([sheetName, policy]) => {
+      // Check required fields
+      if (!policy.keyColumn) {
+        validation.issues.push(sheetName + ': Missing keyColumn');
+        validation.valid = false;
+      }
+      
+      if (!policy.strategy) {
+        validation.issues.push(sheetName + ': Missing strategy');
+        validation.valid = false;
+      }
+      
+      // Check for logical inconsistencies
+      if (!policy.allowCreate && !policy.allowUpdate) {
+        validation.issues.push(sheetName + ': Neither create nor update allowed');
+        validation.valid = false;
+      }
+      
+      // Warnings
+      if (policy.allowUpdate && !policy.auditTrail) {
+        validation.warnings.push(sheetName + ': Updates allowed but no audit trail');
+      }
+    });
+    
+    return validation;
+  },
+  
+  /**
+   * enforceUpsertPolicies - Enforce upsert policies across all sheets
+   * @returns {Object} Enforcement report
+   */
+  enforceUpsertPolicies() {
+    const validation = this.validateAllPolicies();
+    const report = {
+      timestamp: new Date().toISOString(),
+      validation: validation,
+      enforcement: {
+        totalPolicies: Object.keys(this.policies).length,
+        validPolicies: 0,
+        invalidPolicies: 0
+      }
+    };
+    
+    if (validation.valid) {
+      report.enforcement.validPolicies = report.enforcement.totalPolicies;
+      Logger.log('[enforceUpsertPolicies] All upsert policies are valid');
+    } else {
+      report.enforcement.invalidPolicies = validation.issues.length;
+      Logger.log('[enforceUpsertPolicies] Found ' + validation.issues.length + ' policy issues');
+    }
+    
+    return report;
+  }
+};
+
+/**
+ * getUpsertPolicy - Get upsert policy for a specific sheet
+ * @param {string} sheetName - Sheet name
+ * @returns {Object} Upsert policy or null if not found
+ */
+function getUpsertPolicy(sheetName) {
+  return UpsertPolicyEnforcement.policies[sheetName] || null;
+}
+
+/**
+ * validateUpsertPolicy - Validate upsert policy compliance
+ * @param {string} sheetName - Sheet name
+ * @param {Object} data - Data to validate
+ * @returns {Object} Validation result
+ */
+function validateUpsertPolicy(sheetName, data) {
+  const policy = getUpsertPolicy(sheetName);
+  if (!policy) {
+    return { valid: false, error: 'No upsert policy found for sheet: ' + sheetName };
+  }
+  
+  return UpsertPolicyEnforcement.validateUpsertData(data, policy);
+}
