@@ -7119,3 +7119,154 @@ function t2ou_loadTeamQuarterStats_(ss, debug) {
   Logger.log('[' + FN + '] WARNING: All sources exhausted, returning 0 teams');
   return {};
 }
+
+// ============================================================================
+// PHASE 2 PATCH 3C: RESULTSCLEAN CANONICAL COLUMNS
+// ============================================================================
+
+/**
+ * RESULTSCLEAN_CONTRACT - Canonical columns for ResultsClean (Phase 2 Patch 3C)
+ * All result data must conform to this standardized structure
+ */
+const RESULTSCLEAN_CONTRACT = [
+  "result_id", "event_date", "league", "team", "opponent", "side_total",
+  "line", "actual_result", "settled_at", "status", "payout", "config_stamp",
+  "source", "season", "quarter", "created_at"
+];
+
+/**
+ * createResultsCleanHeaderMap_ - Create standardized header map for ResultsClean
+ * @param {Array} actualHeaders - Actual headers from sheet
+ * @returns {Object} Header map using ContractEnforcer functions
+ */
+function createResultsCleanHeaderMap_(actualHeaders) {
+  // Use ContractEnforcer function for consistency
+  if (typeof createCanonicalHeaderMap_ !== 'undefined') {
+    return createCanonicalHeaderMap_(RESULTSCLEAN_CONTRACT, actualHeaders);
+  }
+  
+  // Fallback implementation
+  const map = {};
+  const normalizedActual = actualHeaders.map(h => 
+    String(h).toLowerCase().replace(/[\s_]/g, "")
+  );
+  
+  RESULTSCLEAN_CONTRACT.forEach((canonical, idx) => {
+    const normalized = canonical.toLowerCase().replace(/[\s_]/g, "");
+    const actualIdx = normalizedActual.indexOf(normalized);
+    map[canonical] = actualIdx >= 0 ? actualIdx : idx;
+  });
+  
+  return map;
+}
+
+/**
+ * validateResultsCleanRow_ - Validate row against ResultsClean contract
+ * @param {Object} result - Result object
+ * @returns {Object} Validation result
+ */
+function validateResultsCleanRow_(result) {
+  const errors = [];
+  const warnings = [];
+  
+  // Required fields
+  const required = ['result_id', 'event_date', 'league', 'team', 'side_total'];
+  required.forEach(field => {
+    if (!result[field] || result[field] === '') {
+      errors.push(`Missing required field: ${field}`);
+    }
+  });
+  
+  // Status validation
+  if (result.status) {
+    const validStatuses = ['PENDING', 'WON', 'LOST', 'PUSH', 'VOID', 'CANCELLED'];
+    if (!validStatuses.includes(String(result.status).toUpperCase())) {
+      warnings.push(`Unusual status: ${result.status}`);
+    }
+  }
+  
+  // Payout validation
+  if (result.payout !== undefined && result.payout !== null) {
+    const payout = parseFloat(result.payout);
+    if (!isFinite(payout)) {
+      errors.push('Invalid payout value - must be numeric');
+    } else if (payout < 0) {
+      warnings.push('Negative payout - check for errors');
+    }
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    warnings: warnings
+  };
+}
+
+/**
+ * writeResultsClean_ - Write results using canonical contract (Phase 2 Patch 3C)
+ * @param {Sheet} sheet - Target sheet
+ * @param {Array} results - Array of result objects
+ * @returns {Object} Write result
+ */
+function writeResultsClean_(sheet, results) {
+  if (!sheet || !results) return { success: false, error: 'Invalid parameters' };
+  
+  // Ensure sheet has correct headers
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, RESULTSCLEAN_CONTRACT.length).setValues([RESULTSCLEAN_CONTRACT])
+      .setFontWeight("bold")
+      .setBackground("#1a1a2e")
+      .setFontColor("#FFD700");
+    sheet.setFrozenRows(1);
+  }
+  
+  // Clear existing data (preserve header)
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const headerMap = createResultsCleanHeaderMap_(headers);
+  
+  const rows = [];
+  const validationErrors = [];
+  
+  results.forEach((result, index) => {
+    // Validate result
+    const validation = validateResultsCleanRow_(result);
+    if (!validation.valid) {
+      validationErrors.push({ index: index, errors: validation.errors });
+      return;
+    }
+    
+    // Add missing fields with defaults
+    if (!result.result_id) result.result_id = 'RES_' + Utilities.getUuid();
+    if (!result.created_at) result.created_at = new Date().toISOString();
+    if (!result.source) result.source = 'ResultsClean';
+    
+    // Map to contract columns
+    const row = RESULTSCLEAN_CONTRACT.map(column => {
+      const colIdx = headerMap[column];
+      return colIdx >= 0 ? result[column] || '' : '';
+    });
+    
+    rows.push(row);
+  });
+  
+  // Write data
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  
+  // Log validation issues
+  if (validationErrors.length > 0) {
+    Logger.log('[writeResultsClean_] Validation errors: ' + JSON.stringify(validationErrors));
+  }
+  
+  return {
+    success: true,
+    rowsWritten: rows.length,
+    validationErrors: validationErrors.length
+  };
+}

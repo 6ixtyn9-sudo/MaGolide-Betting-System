@@ -5145,3 +5145,429 @@ function writeInventorySheet(ss, inventory) {
   };
 }
 
+// ============================================================================
+// PHASE 2 PATCH 3 + 3B + 3C: 23-COLUMN BET_SLIPS CONTRACT + CONFIDENCE NORMALIZATION
+// ============================================================================
+
+/**
+ * BET_SLIPS_CONTRACT - 23-column canonical contract (Phase 2 Patch 3)
+ * All bet data must conform to this standardized structure
+ */
+const BET_SLIPS_CONTRACT = [
+  "bet_id", "league", "event_date", "team", "opponent", "side_total",
+  "line", "implied_prob", "confidence_pct", "tier_code", "tier_display",
+  "ev", "kelly_pct", "status", "result", "payout", "placed_at",
+  "settled_at", "config_stamp", "source", "gender", "quarter", "season",
+  "created_at"
+];
+
+/**
+ * normalizeConfidence_ - Full confidence normalization (Phase 2 Patch 3B)
+ * Normalizes confidence to Pct/Prob/Tier_Code/Tier_Display format
+ * @param {number} confidence - Raw confidence value
+ * @returns {Object} Normalized confidence object
+ */
+function normalizeConfidence_(confidence) {
+  // Use ContractEnforcer function for consistency
+  if (typeof createCanonicalHeaderMap_ !== 'undefined') {
+    return createCanonicalHeaderMap_(BET_SLIPS_CONTRACT, [confidence]);
+  }
+  
+  const pct = Math.max(0, Math.min(1, confidence));
+  const prob = pct;
+  
+  // Determine tier using normalized thresholds
+  let tierCode, tierDisplay;
+  if (pct >= 0.85) {
+    tierCode = "ELITE";
+    tierDisplay = "Elite (85%+)";
+  } else if (pct >= 0.65) {
+    tierCode = "STRONG";
+    tierDisplay = "Strong (65-84%)";
+  } else if (pct >= 0.55) {
+    tierCode = "MEDIUM";
+    tierDisplay = "Medium (55-64%)";
+  } else if (pct >= 0.45) {
+    tierCode = "WEAK";
+    tierDisplay = "Weak (45-54%)";
+  } else {
+    tierCode = "AVOID";
+    tierDisplay = "Avoid (<45%)";
+  }
+  
+  return {
+    pct: pct,
+    prob: prob,
+    tier_code: tierCode,
+    tier_display: tierDisplay
+  };
+}
+
+/**
+ * createBetSlipsHeaderMap_ - Create standardized header map for Bet_Slips
+ * @param {Array} actualHeaders - Actual headers from sheet
+ * @returns {Object} Header map using ContractEnforcer functions
+ */
+function createBetSlipsHeaderMap_(actualHeaders) {
+  // Use ContractEnforcer function for consistency
+  if (typeof createCanonicalHeaderMap_ !== 'undefined') {
+    return createCanonicalHeaderMap_(BET_SLIPS_CONTRACT, actualHeaders);
+  }
+  
+  // Fallback implementation
+  const map = {};
+  const normalizedActual = actualHeaders.map(h => 
+    String(h).toLowerCase().replace(/[\s_]/g, "")
+  );
+  
+  BET_SLIPS_CONTRACT.forEach((canonical, idx) => {
+    const normalized = canonical.toLowerCase().replace(/[\s_]/g, "");
+    const actualIdx = normalizedActual.indexOf(normalized);
+    map[canonical] = actualIdx >= 0 ? actualIdx : idx;
+  });
+  
+  return map;
+}
+
+/**
+ * validateBetSlipsRow_ - Validate row against 23-column contract
+ * @param {Object} bet - Bet object
+ * @returns {Object} Validation result
+ */
+function validateBetSlipsRow_(bet) {
+  const errors = [];
+  const warnings = [];
+  
+  // Required fields
+  const required = ['bet_id', 'league', 'team', 'side_total'];
+  required.forEach(field => {
+    if (!bet[field] || bet[field] === '') {
+      errors.push(`Missing required field: ${field}`);
+    }
+  });
+  
+  // Confidence normalization
+  if (bet.confidence_pct !== undefined && bet.confidence_pct !== null) {
+    const normalized = normalizeConfidence_(bet.confidence_pct);
+    if (!normalized.tier_code) {
+      errors.push('Invalid confidence value - cannot determine tier');
+    }
+  } else {
+    warnings.push('Missing confidence_pct - tier cannot be determined');
+  }
+  
+  // EV calculation
+  if (bet.implied_prob && bet.confidence_pct && !bet.ev) {
+    // Calculate EV using ContractEnforcer function
+    if (typeof calculateExpectedValue_ !== 'undefined') {
+      bet.ev = calculateExpectedValue_(bet.implied_prob, bet.confidence_pct, bet.line || 0);
+    } else {
+      // Fallback EV calculation
+      const winProb = bet.confidence_pct;
+      const loseProb = 1 - winProb;
+      const payout = (1 / bet.implied_prob) - 1;
+      bet.ev = (winProb * payout) - loseProb;
+    }
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    warnings: warnings
+  };
+}
+
+/**
+ * writeBetSlips_ - Write bets using 23-column contract (Phase 2 Patch 3C)
+ * @param {Sheet} sheet - Target sheet
+ * @param {Array} bets - Array of bet objects
+ * @returns {Object} Write result
+ */
+function writeBetSlips_(sheet, bets) {
+  if (!sheet || !bets) return { success: false, error: 'Invalid parameters' };
+  
+  // Ensure sheet has correct headers
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, BET_SLIPS_CONTRACT.length).setValues([BET_SLIPS_CONTRACT])
+      .setFontWeight("bold")
+      .setBackground("#1a1a2e")
+      .setFontColor("#FFD700");
+    sheet.setFrozenRows(1);
+  }
+  
+  // Clear existing data (preserve header)
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const headerMap = createBetSlipsHeaderMap_(headers);
+  
+  const rows = [];
+  const validationErrors = [];
+  
+  bets.forEach((bet, index) => {
+    // Validate bet
+    const validation = validateBetSlipsRow_(bet);
+    if (!validation.valid) {
+      validationErrors.push({ index: index, errors: validation.errors });
+      return;
+    }
+    
+    // Apply confidence normalization
+    if (bet.confidence_pct !== undefined) {
+      const normalized = normalizeConfidence_(bet.confidence_pct);
+      Object.assign(bet, normalized);
+    }
+    
+    // Map to contract columns
+    const row = BET_SLIPS_CONTRACT.map(column => {
+      const colIdx = headerMap[column];
+      return colIdx >= 0 ? bet[column] || '' : '';
+    });
+    
+    rows.push(row);
+  });
+  
+  // Write data
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  
+  // Log validation issues
+  if (validationErrors.length > 0) {
+    Logger.log('[writeBetSlips_] Validation errors: ' + JSON.stringify(validationErrors));
+  }
+  
+  return {
+    success: true,
+    rowsWritten: rows.length,
+    validationErrors: validationErrors.length
+  };
+}
+
+// ============================================================================
+// PHASE 2 PATCH 6: 17-COLUMN FORENSIC LOGS CONTRACT
+// ============================================================================
+
+/**
+ * FORENSIC_LOGS_CONTRACT - 17-column canonical contract (Phase 2 Patch 6)
+ * All forensic logs (Tier1_Predictions, Tier2_Log, OU_Log) must conform to this
+ */
+const FORENSIC_LOGS_CONTRACT = [
+  "log_id", "timestamp", "league", "event_id", "team", "opponent",
+  "side_total", "line", "prediction", "confidence", "tier", "ev",
+  "status", "result", "config_stamp", "source", "notes"
+];
+
+/**
+ * createForensicLogsHeaderMap_ - Create standardized header map for forensic logs
+ * @param {Array} actualHeaders - Actual headers from sheet
+ * @returns {Object} Header map using ContractEnforcer functions
+ */
+function createForensicLogsHeaderMap_(actualHeaders) {
+  // Use ContractEnforcer function for consistency
+  if (typeof createCanonicalHeaderMap_ !== 'undefined') {
+    return createCanonicalHeaderMap_(FORENSIC_LOGS_CONTRACT, actualHeaders);
+  }
+  
+  // Fallback implementation
+  const map = {};
+  const normalizedActual = actualHeaders.map(h => 
+    String(h).toLowerCase().replace(/[\s_]/g, "")
+  );
+  
+  FORENSIC_LOGS_CONTRACT.forEach((canonical, idx) => {
+    const normalized = canonical.toLowerCase().replace(/[\s_]/g, "");
+    const actualIdx = normalizedActual.indexOf(normalized);
+    map[canonical] = actualIdx >= 0 ? actualIdx : idx;
+  });
+  
+  return map;
+}
+
+/**
+ * validateForensicLogRow_ - Validate row against 17-column contract
+ * @param {Object} log - Log object
+ * @returns {Object} Validation result
+ */
+function validateForensicLogRow_(log) {
+  const errors = [];
+  const warnings = [];
+  
+  // Required fields
+  const required = ['log_id', 'timestamp', 'league', 'team', 'side_total'];
+  required.forEach(field => {
+    if (!log[field] || log[field] === '') {
+      errors.push(`Missing required field: ${field}`);
+    }
+  });
+  
+  // Confidence and tier validation
+  if (log.confidence !== undefined && log.confidence !== null) {
+    const normalized = normalizeConfidence_(log.confidence);
+    if (!normalized.tier_code) {
+      errors.push('Invalid confidence value - cannot determine tier');
+    } else {
+      // Apply normalized tier
+      log.tier = normalized.tier_code;
+    }
+  } else {
+    warnings.push('Missing confidence - tier may be inconsistent');
+  }
+  
+  // EV calculation if missing
+  if (log.line && log.confidence && !log.ev) {
+    // Calculate implied probability from line (simplified)
+    const impliedProb = log.line > 0 ? 1 / (log.line + 1) : Math.abs(log.line) / (Math.abs(log.line) + 1);
+    
+    // Calculate EV using ContractEnforcer function
+    if (typeof calculateExpectedValue_ !== 'undefined') {
+      log.ev = calculateExpectedValue_(impliedProb, log.confidence, log.line);
+    } else {
+      // Fallback EV calculation
+      const winProb = log.confidence;
+      const loseProb = 1 - winProb;
+      const payout = Math.abs(log.line);
+      log.ev = (winProb * payout) - loseProb;
+    }
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    warnings: warnings
+  };
+}
+
+/**
+ * writeForensicLogs_ - Write logs using 17-column contract (Phase 2 Patch 6)
+ * @param {Sheet} sheet - Target sheet (Tier1_Predictions, Tier2_Log, OU_Log)
+ * @param {Array} logs - Array of log objects
+ * @returns {Object} Write result
+ */
+function writeForensicLogs_(sheet, logs) {
+  if (!sheet || !logs) return { success: false, error: 'Invalid parameters' };
+  
+  // Ensure sheet has correct headers
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, FORENSIC_LOGS_CONTRACT.length).setValues([FORENSIC_LOGS_CONTRACT])
+      .setFontWeight("bold")
+      .setBackground("#1a1a2e")
+      .setFontColor("#FFD700");
+    sheet.setFrozenRows(1);
+  }
+  
+  // Clear existing data (preserve header)
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const headerMap = createForensicLogsHeaderMap_(headers);
+  
+  const rows = [];
+  const validationErrors = [];
+  
+  logs.forEach((log, index) => {
+    // Validate log
+    const validation = validateForensicLogRow_(log);
+    if (!validation.valid) {
+      validationErrors.push({ index: index, errors: validation.errors });
+      return;
+    }
+    
+    // Apply confidence normalization
+    if (log.confidence !== undefined) {
+      const normalized = normalizeConfidence_(log.confidence);
+      Object.assign(log, normalized);
+    }
+    
+    // Map to contract columns
+    const row = FORENSIC_LOGS_CONTRACT.map(column => {
+      const colIdx = headerMap[column];
+      return colIdx >= 0 ? log[column] || '' : '';
+    });
+    
+    rows.push(row);
+  });
+  
+  // Write data
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  
+  // Log validation issues
+  if (validationErrors.length > 0) {
+    Logger.log('[writeForensicLogs_] Validation errors: ' + JSON.stringify(validationErrors));
+  }
+  
+  return {
+    success: true,
+    rowsWritten: rows.length,
+    validationErrors: validationErrors.length
+  };
+}
+
+/**
+ * alignForensicLogsToContract_ - Align existing forensic logs to 17-column contract
+ * @param {Spreadsheet} ss - Spreadsheet object
+ * @returns {Object} Alignment result
+ */
+function alignForensicLogsToContract_(ss) {
+  const forensicSheets = ['Tier1_Predictions', 'Tier2_Log', 'OU_Log'];
+  const results = {};
+  
+  forensicSheets.forEach(sheetName => {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      results[sheetName] = { success: false, error: 'Sheet not found' };
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      results[sheetName] = { success: false, error: 'No data to align' };
+      return;
+    }
+    
+    const headers = data[0];
+    const logs = [];
+    
+    // Convert existing data to log objects
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const log = {};
+      
+      // Map existing columns to contract
+      headers.forEach((header, idx) => {
+        const normalizedHeader = String(header).toLowerCase().replace(/[\s_]/g, "");
+        
+        // Try to match to contract columns
+        FORENSIC_LOGS_CONTRACT.forEach(contractCol => {
+          const normalizedContract = contractCol.toLowerCase().replace(/[\s_]/g, "");
+          if (normalizedHeader === normalizedContract) {
+            log[contractCol] = row[idx];
+          }
+        });
+      });
+      
+      // Add missing required fields with defaults
+      if (!log.log_id) log.log_id = 'LOG_' + Utilities.getUuid();
+      if (!log.timestamp) log.timestamp = new Date().toISOString();
+      if (!log.source) log.source = sheetName;
+      if (!log.notes) log.notes = 'Aligned from existing data';
+      
+      logs.push(log);
+    }
+    
+    // Write aligned data
+    const writeResult = writeForensicLogs_(sheet, logs);
+    results[sheetName] = writeResult;
+  });
+  
+  return results;
+}
+

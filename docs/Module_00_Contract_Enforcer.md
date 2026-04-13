@@ -523,3 +523,113 @@ var UPSERT_POLICY = {
 function logPhase5ContractComplete_() {
   Logger.log("[PHASE 5 COMPLETE] Contract_Enforcer: canonical headers (createCanonicalHeaderMap_/findHeaderIndex_), getSheetInsensitive, UPSERT_POLICY, collision resolution");
 }
+
+// ============================================================================
+// PHASE 2 PATCH 3C: RESULTSCLEAN CANONICAL COLUMNS (CONTRACT ENFORCER)
+// ============================================================================
+
+/**
+ * RESULTS_CLEAN_CANONICAL_MIN - Minimal canonical columns for ResultsClean (Phase 2 Patch 3C)
+ * All ResultsClean sheets must have at least these columns in this order
+ */
+var RESULTS_CLEAN_CANONICAL_MIN = [
+  "result_id", "event_date", "league", "team", "opponent", "side_total",
+  "line", "actual_result", "settled_at", "status", "payout", "config_stamp",
+  "source", "season", "quarter", "created_at"
+];
+
+/**
+ * validateResultsCleanContract_ - Validate ResultsClean sheet against canonical contract
+ * @param {Sheet} sheet - ResultsClean sheet
+ * @returns {Object} Validation result
+ */
+function validateResultsCleanContract_(sheet) {
+  if (!sheet) return { valid: false, error: 'Sheet not found' };
+  
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var headerMap = createCanonicalHeaderMap_(headers);
+  
+  var missing = [];
+  var warnings = [];
+  
+  // Check required canonical columns
+  for (var i = 0; i < RESULTS_CLEAN_CANONICAL_MIN.length; i++) {
+    var col = RESULTS_CLEAN_CANONICAL_MIN[i];
+    var key = canonicalHeaderKey_(col);
+    if (headerMap[key] === undefined) {
+      missing.push(col);
+    }
+  }
+  
+  // Check for extra non-canonical columns
+  var extraCount = 0;
+  for (var j = 0; j < headers.length; j++) {
+    var header = headers[j];
+    if (header && typeof header === 'string') {
+      var key = canonicalHeaderKey_(header);
+      if (RESULTS_CLEAN_CANONICAL_MIN.indexOf(header) === -1 && 
+          headerMap[key] === undefined) {
+        extraCount++;
+      }
+    }
+  }
+  
+  if (extraCount > 0) {
+    warnings.push('Found ' + extraCount + ' non-canonical columns');
+  }
+  
+  return {
+    valid: missing.length === 0,
+    missing: missing,
+    warnings: warnings,
+    totalColumns: headers.length,
+    canonicalColumns: RESULTS_CLEAN_CANONICAL_MIN.length
+  };
+}
+
+/**
+ * enforceResultsCleanContract_ - Ensure ResultsClean sheet conforms to canonical contract
+ * @param {Spreadsheet} ss - Spreadsheet object
+ * @returns {Object} Enforcement result
+ */
+function enforceResultsCleanContract_(ss) {
+  if (!ss) return { success: false, error: 'Invalid spreadsheet' };
+  
+  var sheet = getSheetInsensitive(ss, "ResultsClean");
+  if (!sheet) {
+    // Create ResultsClean sheet with canonical headers
+    sheet = ss.insertSheet("ResultsClean");
+    sheet.getRange(1, 1, 1, RESULTS_CLEAN_CANONICAL_MIN.length)
+      .setValues([RESULTS_CLEAN_CANONICAL_MIN])
+      .setFontWeight("bold")
+      .setBackground("#1a1a2e")
+      .setFontColor("#FFD700");
+    sheet.setFrozenRows(1);
+    
+    return {
+      success: true,
+      action: 'CREATED',
+      columnsAdded: RESULTS_CLEAN_CANONICAL_MIN.length
+    };
+  }
+  
+  // Validate existing sheet
+  var validation = validateResultsCleanContract_(sheet);
+  if (!validation.valid) {
+    // Add missing canonical columns
+    ensureResultsCleanCanonicalHeaders_(ss);
+    
+    return {
+      success: true,
+      action: 'ENFORCED',
+      columnsAdded: validation.missing.length,
+      missingColumns: validation.missing
+    };
+  }
+  
+  return {
+    success: true,
+    action: 'COMPLIANT',
+    totalColumns: validation.totalColumns
+  };
+}
