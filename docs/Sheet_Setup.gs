@@ -1254,12 +1254,51 @@ function createCoreSheets_(ss) {
   _initialiseTierConfigs_(ss);
 
   var sid = ss.getSheetByName('Satellite_Identity');
-  if (sid && sid.getLastRow() === 0) {
-    sid.getRange(1, 1, 1, 5).setValues([[
-      'Satellite_Key', 'Display_Name', 'League', 'Notes', 'Updated_UTC'
-    ]]);
-    sid.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#fff2cc');
-    Logger.log('Satellite_Identity: seeded header row');
+  if (sid) {
+    var sidLastRow = sid.getLastRow();
+
+    // Seed header if the sheet is completely empty
+    if (sidLastRow === 0) {
+      sid.getRange(1, 1, 1, 5).setValues([[
+        'Satellite_Key', 'Display_Name', 'League', 'Notes', 'Updated_UTC'
+      ]]);
+      sid.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#fff2cc');
+      Logger.log('Satellite_Identity: seeded header row');
+      sidLastRow = 1;
+    }
+
+    // Auto-populate the spreadsheet's own identity row if it's not there yet.
+    // This registers the master file itself as a satellite entry so the ledger
+    // is never empty after setup.
+    var ssId = 'MASTER';
+    try { ssId = ss.getId(); } catch (e) {}
+    var ssName = 'Ma Golide Master';
+    try { ssName = ss.getName(); } catch (e) {}
+
+    // Check whether the master entry already exists (scan column A)
+    var alreadyRegistered = false;
+    if (sidLastRow > 1) {
+      var sidData = sid.getRange(2, 1, sidLastRow - 1, 1).getValues();
+      for (var si = 0; si < sidData.length; si++) {
+        if (String(sidData[si][0]).indexOf(ssId) !== -1) {
+          alreadyRegistered = true;
+          break;
+        }
+      }
+    }
+
+    if (!alreadyRegistered) {
+      sid.getRange(sidLastRow + 1, 1, 1, 5).setValues([[
+        ssId,
+        ssName,
+        'ALL',
+        'Auto-registered by setupCoreSheets (master file)',
+        new Date().toISOString()
+      ]]);
+      Logger.log('Satellite_Identity: registered master entry — ' + ssName + ' (' + ssId + ')');
+    } else {
+      Logger.log('Satellite_Identity: master entry already present — skipped');
+    }
   }
 
   if (typeof ensureResultsCleanCanonicalHeaders_ === 'function') {
