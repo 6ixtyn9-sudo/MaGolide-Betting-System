@@ -3856,9 +3856,15 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   }
 
   function slipMarketFromSniper_(sp) {
-    if (sp && sp.signalType === 'MARGIN') return 'SNIPER_MARGIN';
-    var p = String(sp && sp.pick || '').toUpperCase();
+    if (!sp) return 'SNIPER';
+    var sig = String(sp.signalType || '').toUpperCase();
+    if (sig === 'MARGIN') return 'SNIPER_MARGIN';
+    if (sig === 'OU' || sig === 'OU_STAR' || sig === 'OU_HQ' ||
+        sig === 'OU_DIR' || sig === 'OU_DIR_HQ') return 'SNIPER_OU';
+    if (sig === 'HIGH_QTR') return 'SNIPER';
+    var p = String(sp.pick || '').toUpperCase();
     if (p.indexOf('OVER') >= 0 || p.indexOf('UNDER') >= 0) return 'SNIPER_OU';
+    if (p.indexOf('+') >= 0 || p.indexOf('-') >= 0) return 'SNIPER_MARGIN';
     return 'SNIPER';
   }
   
