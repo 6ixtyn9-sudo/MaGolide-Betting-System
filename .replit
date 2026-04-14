@@ -36,3 +36,7 @@ outputType = "webview"
 [deployment]
 deploymentTarget = "autoscale"
 run = ["node", "server.js"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 30000
