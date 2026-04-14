@@ -890,48 +890,95 @@ function detectRobbers(gameData, h2hStats, recentForm, config) {
   
   _robbers_log_(fn, 'Resolved odds: home=' + homeOdds + ', away=' + awayOdds + ' (' + resolved.source + ')');
   
-  if (homeOdds <= 0 || awayOdds <= 0) {
-    _robbers_log_(fn, 'EXIT: Cannot resolve odds');
-    return null;
-  }
+  var oddsAvailable = (homeOdds > 0 && awayOdds > 0);
   
+  if (!oddsAvailable) {
+    _robbers_log_(fn, 'WARNING: Odds not available — using prediction-based fallback (winner/loser mode)');
+  }
+
   // ─── FAVORITE/UNDERDOG DETERMINATION ───────────────────────────────────────
-  var isHomeUnderdog = (homeOdds > awayOdds);
-  var underdog = isHomeUnderdog ? home : away;
-  var favorite = isHomeUnderdog ? away : home;
-  var underdogOdds = isHomeUnderdog ? homeOdds : awayOdds;
-  var favoriteOdds = isHomeUnderdog ? awayOdds : homeOdds;
-  
-  _robbers_log_(fn, 'Favorite: ' + favorite + ' @' + favoriteOdds.toFixed(2) + 
-                   ' | Underdog: ' + underdog + ' @' + underdogOdds.toFixed(2));
-  
-  // ─── ODDS RANGE VALIDATION ─────────────────────────────────────────────────
-  var maxFavoriteOdds = _robbers_toNum_(config.maxFavoriteOdds, 2.20);
-  if (favoriteOdds > maxFavoriteOdds) {
-    _robbers_log_(fn, 'EXIT: favoriteOdds ' + favoriteOdds.toFixed(2) + ' > max ' + maxFavoriteOdds);
-    return null;
+  // When odds are missing, determine sides from prediction data:
+  //   gameData.pred  → 1 = home predicted winner, 2 = away predicted winner
+  //   gameData.probHome / gameData.probAway → probability percentages
+  //   gameData.prob  → composite string like "56 - 44"
+  var isHomeUnderdog;
+  var underdog, favorite;
+  var underdogOdds = 0, favoriteOdds = 0;
+
+  if (oddsAvailable) {
+    isHomeUnderdog = (homeOdds > awayOdds);
+    underdogOdds   = isHomeUnderdog ? homeOdds : awayOdds;
+    favoriteOdds   = isHomeUnderdog ? awayOdds : homeOdds;
+  } else {
+    // Fall back to prediction direction
+    var predWinner = _robbers_toNum_(gameData.pred || gameData.predicted_winner || 0, 0);
+    var probHome   = _robbers_toNum_(gameData.probHome || gameData.prob_home || 0, 0);
+    var probAway   = _robbers_toNum_(gameData.probAway || gameData.prob_away || 0, 0);
+
+    // Parse combined prob string "56 - 44"
+    if (!probHome && !probAway && gameData.prob) {
+      var probStr = String(gameData.prob || '');
+      var probParts = probStr.split(/[\-–\/]/);
+      if (probParts.length >= 2) {
+        probHome = _robbers_toNum_(probParts[0].trim(), 0);
+        probAway = _robbers_toNum_(probParts[1].trim(), 0);
+      }
+    }
+
+    if (predWinner === 2) {
+      // Away is predicted favorite → home is the potential underdog to back
+      isHomeUnderdog = true;
+    } else if (predWinner === 1) {
+      // Home is predicted favorite → away is the potential underdog to back
+      isHomeUnderdog = false;
+    } else if (probHome > 0 || probAway > 0) {
+      // Use probability: higher prob = favorite, so underdog = lower prob side
+      isHomeUnderdog = (probHome < probAway);
+    } else {
+      _robbers_log_(fn, 'EXIT: Cannot determine sides — no odds and no prediction data');
+      return null;
+    }
   }
-  
-  var minOdds = _robbers_toNum_(config.minOdds, 1.80);
-  var maxOdds = _robbers_toNum_(config.maxOdds, 12.00);
-  if (underdogOdds < minOdds || underdogOdds > maxOdds) {
-    _robbers_log_(fn, 'EXIT: underdogOdds ' + underdogOdds.toFixed(2) + ' outside [' + minOdds + ', ' + maxOdds + ']');
-    return null;
+
+  underdog = isHomeUnderdog ? home : away;
+  favorite = isHomeUnderdog ? away : home;
+
+  if (oddsAvailable) {
+    _robbers_log_(fn, 'Favorite: ' + favorite + ' @' + favoriteOdds.toFixed(2) +
+                     ' | Underdog: ' + underdog + ' @' + underdogOdds.toFixed(2));
+
+    // ─── ODDS RANGE VALIDATION (only when odds are available) ────────────────
+    var maxFavoriteOdds = _robbers_toNum_(config.maxFavoriteOdds, 2.20);
+    if (favoriteOdds > maxFavoriteOdds) {
+      _robbers_log_(fn, 'EXIT: favoriteOdds ' + favoriteOdds.toFixed(2) + ' > max ' + maxFavoriteOdds);
+      return null;
+    }
+
+    var minOdds = _robbers_toNum_(config.minOdds, 1.80);
+    var maxOdds = _robbers_toNum_(config.maxOdds, 12.00);
+    if (underdogOdds < minOdds || underdogOdds > maxOdds) {
+      _robbers_log_(fn, 'EXIT: underdogOdds ' + underdogOdds.toFixed(2) + ' outside [' + minOdds + ', ' + maxOdds + ']');
+      return null;
+    }
+  } else {
+    _robbers_log_(fn, 'Predicted winner: ' + favorite + ' | Potential upset pick: ' + underdog + ' (no odds)');
   }
-  
+
   // ─── SCORING SYSTEM ────────────────────────────────────────────────────────
   var score = 0;
   var reasons = [];
   
-  // FACTOR 0: Favorite Strength (max 15)
-  if (favoriteOdds <= 1.35) {
-    score += 15; reasons.push('Heavy fav @' + favoriteOdds.toFixed(2));
-  } else if (favoriteOdds <= 1.55) {
-    score += 12; reasons.push('Strong fav @' + favoriteOdds.toFixed(2));
-  } else if (favoriteOdds <= 1.75) {
-    score += 8; reasons.push('Clear fav @' + favoriteOdds.toFixed(2));
-  } else {
-    score += 3; reasons.push('Slight fav @' + favoriteOdds.toFixed(2));
+  // FACTOR 0: Favorite Strength (max 15) — skipped when odds unavailable
+  if (oddsAvailable) {
+    if (favoriteOdds <= 1.35) {
+      score += 15; reasons.push('Heavy fav @' + favoriteOdds.toFixed(2));
+    } else if (favoriteOdds <= 1.55) {
+      score += 12; reasons.push('Strong fav @' + favoriteOdds.toFixed(2));
+    } else if (favoriteOdds <= 1.75) {
+      score += 8; reasons.push('Clear fav @' + favoriteOdds.toFixed(2));
+    } else {
+      score += 3; reasons.push('Slight fav @' + favoriteOdds.toFixed(2));
+    }
   }
   
   // FACTOR 1: H2H History (max 20)
@@ -1000,19 +1047,30 @@ function detectRobbers(gameData, h2hStats, recentForm, config) {
     }
   }
   
-  // FACTOR 5: Odds Value (max 15)
-  if (underdogOdds >= 2.50 && underdogOdds <= 5.50) {
-    score += 15; reasons.push('Value @' + underdogOdds.toFixed(2));
-  } else if (underdogOdds >= 2.00 && underdogOdds < 2.50) {
-    score += 10; reasons.push('Playable @' + underdogOdds.toFixed(2));
-  } else if (underdogOdds > 5.50 && underdogOdds <= 8.00) {
-    score += 8; reasons.push('High payout @' + underdogOdds.toFixed(2));
+  // FACTOR 5: Odds Value (max 15) — skipped when odds unavailable
+  if (oddsAvailable) {
+    if (underdogOdds >= 2.50 && underdogOdds <= 5.50) {
+      score += 15; reasons.push('Value @' + underdogOdds.toFixed(2));
+    } else if (underdogOdds >= 2.00 && underdogOdds < 2.50) {
+      score += 10; reasons.push('Playable @' + underdogOdds.toFixed(2));
+    } else if (underdogOdds > 5.50 && underdogOdds <= 8.00) {
+      score += 8; reasons.push('High payout @' + underdogOdds.toFixed(2));
+    } else {
+      score += 4; reasons.push('Longshot @' + underdogOdds.toFixed(2));
+    }
   } else {
-    score += 4; reasons.push('Longshot @' + underdogOdds.toFixed(2));
+    reasons.push('No odds (prediction-based pick)');
   }
-  
+
   // ─── THRESHOLD CHECK ───────────────────────────────────────────────────────
+  // When odds are unavailable the max possible score is lower (Factors 0 & 5
+  // are skipped = up to 30 points missing). Lower the minimum threshold
+  // proportionally so prediction-based picks are still surfaced.
   var minScore = _robbers_toNum_(config.minScore, 25);
+  if (!oddsAvailable) {
+    minScore = Math.max(10, Math.round(minScore * 0.55));
+    _robbers_log_(fn, 'No-odds mode: adjusted minScore → ' + minScore);
+  }
   _robbers_log_(fn, 'Score: ' + score + ' (min: ' + minScore + ') | ' + reasons.join(' | '));
   
   if (score < minScore) {
@@ -1023,19 +1081,20 @@ function detectRobbers(gameData, h2hStats, recentForm, config) {
   // ─── RAW CONFIDENCE CALCULATION ────────────────────────────────────────────
   var maxConfidence = _robbers_toNum_(config.maxConfidence, 95);
   var rawConfidence = Math.min(maxConfidence, 46 + score * 0.55);
-  var impliedProb = 1.0 / underdogOdds;
   var rawModelProb = rawConfidence / 100;
-  var rawEdge = rawModelProb - impliedProb;
-  var rawEV = (underdogOdds - 1) * rawModelProb - (1 - rawModelProb);
-  
+  // impliedProb and EV only apply when odds are known
+  var impliedProb = oddsAvailable ? (1.0 / underdogOdds) : rawModelProb;
+  var rawEdge = oddsAvailable ? (rawModelProb - impliedProb) : 0;
+  var rawEV   = oddsAvailable ? ((underdogOdds - 1) * rawModelProb - (1 - rawModelProb)) : 0;
+
   // ─── BUILD RESULT OBJECT ───────────────────────────────────────────────────
   var result = {
     isRobber: true,
     team: underdog,
     opponent: favorite,
-    pick: underdog + ' ML',
+    pick: underdog + (oddsAvailable ? ' ML' : ' (Upset Pick)'),
     type: 'ROBBER',
-    odds: underdogOdds,
+    odds: oddsAvailable ? underdogOdds : 0,
     confidence: Math.round(rawConfidence * 10) / 10,
     tier: 'ROBBER',
     tierDisplay: '(ROBBER)',
