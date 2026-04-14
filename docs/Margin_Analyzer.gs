@@ -1335,14 +1335,14 @@ function calibrateConfidence(picks, opts) {
     };
   }
   
-  if (picks.length < 20) {
-    log('WARN', 'Only ' + picks.length + ' picks - need at least 20 for calibration');
+  if (picks.length < 5) {
+    log('WARN', 'Only ' + picks.length + ' picks - need at least 5 for calibration (pass-through mode)');
     return {
       ok: false,
-      error: 'Insufficient picks (need 20+)',
+      error: 'Insufficient picks for calibration (need 5+)',
       applyConfidence: function(c) { return c; },
       buckets: [],
-      summary: { totalN: picks.length }
+      summary: { totalN: picks.length, note: 'pass-through: confidence values unchanged' }
     };
   }
   
@@ -2568,17 +2568,36 @@ function generateAccuracyReport(ssArg) {
       if (idx !== undefined) qIdx['Q' + q] = idx;
     }
 
-    // FT score column
+    // FT score column — canonical header map normalises "FT Score" → "ft_score"
+    // (spaces/hyphens replaced with underscores). Check the canonical form first,
+    // then fall back to the raw-lowercase variants for safety.
     var ftIndex =
-      resH['FT Score'] !== undefined ? resH['FT Score'] :
-      resH['ft score'] !== undefined ? resH['ft score'] :
-      resH['ftscore'] !== undefined ? resH['ftscore'] :
+      resH['ft_score']    !== undefined ? resH['ft_score']    :
+      resH['ft score']    !== undefined ? resH['ft score']    :
+      resH['FT Score']    !== undefined ? resH['FT Score']    :
+      resH['ftscore']     !== undefined ? resH['ftscore']     :
+      resH['final_score'] !== undefined ? resH['final_score'] :
       resH['final score'] !== undefined ? resH['final score'] :
-      resH['ft'] !== undefined ? resH['ft'] :
-      resH['score'] !== undefined ? resH['score'] : undefined;
+      resH['full_time']   !== undefined ? resH['full_time']   :
+      resH['result']      !== undefined ? resH['result']      :
+      resH['ft']          !== undefined ? resH['ft']          :
+      resH['score']       !== undefined ? resH['score']       : undefined;
 
     if (ftIndex === undefined) {
-      throw new Error(SHEET_RESULTS + ' missing FT score column (expected "FT Score"/"FT"/"Score").');
+      // Last-resort: scan all keys for anything that contains "ft" or "score"
+      var headerKeys = Object.keys(resH);
+      for (var hk = 0; hk < headerKeys.length; hk++) {
+        var hkv = headerKeys[hk];
+        if ((hkv.indexOf('ft') !== -1 || hkv.indexOf('score') !== -1) && hkv !== 'pred_score') {
+          ftIndex = resH[hkv];
+          Logger.log('[generateAccuracyReport] FT col fallback matched: "' + hkv + '" @ idx ' + ftIndex);
+          break;
+        }
+      }
+    }
+
+    if (ftIndex === undefined) {
+      throw new Error(SHEET_RESULTS + ' missing FT score column (expected "FT Score"/"FT"/"Score"). Headers found: ' + Object.keys(resH).join(', '));
     }
 
     // ------------------------
