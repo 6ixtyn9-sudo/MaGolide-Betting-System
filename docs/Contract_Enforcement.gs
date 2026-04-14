@@ -3679,83 +3679,88 @@ function _capSnipersPerGame(snipers, maxPerGame) {
  */
 function createAccumulatorConfigSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  
-  // Safe sheet retrieval with fallback
-  var sheet = (typeof _getSheet === 'function') 
-    ? _getSheet(ss, 'Config_Accumulator') 
+
+  var sheet = (typeof _getSheet === 'function')
+    ? _getSheet(ss, 'Config_Accumulator')
     : ss.getSheetByName('Config_Accumulator');
-  
-  if (!sheet) {
+
+  var isNew = !sheet;
+  if (isNew) {
     sheet = ss.insertSheet('Config_Accumulator');
   }
-  sheet.clear();
 
-  var data = [
-    ['Parameter', 'Value', 'Description'],
-    ['', '', ''],
-    ['──── BANKER SETTINGS ────', '', ''],
-    ['banker_threshold', 60, 'Minimum confidence % for Banker picks'],
-    ['min_banker_odds', 1.01, 'Minimum odds for bankers'],
-    ['max_banker_odds', 3.0, 'Maximum odds for bankers'],
-    ['', '', ''],
-    ['──── SNIPER SETTINGS ────', '', ''],
-    ['sniper_min_margin', 2.5, 'Minimum margin for Sniper spread picks'],
-    ['max_snipers_per_game', 2, 'Maximum Snipers per match (HIGH_QTR exempt)'],
-    ['', '', ''],
-    ['──── O/U SETTINGS ────', '', ''],
-    ['include_ou_signals', 'TRUE', 'Include Over/Under signals'],
-    ['ou_min_conf', 55, 'Minimum confidence % for O/U'],
-    ['ou_min_ev', 5, 'Minimum EV % for O/U'],
-    ['min_edge_score', 0.0, 'Minimum edge score (edge=0 + EV present = missing)'],
-    ['prefer_directional', 'TRUE', 'Use ou-best-dir / ou-best column'],
-    ['include_highest_quarter', 'TRUE', 'Include Highest Scoring Quarter as Sniper'],
-    ['', '', ''],
-    ['──── TIER SETTINGS ────', '', ''],
-    ['prefer_strong_tier', 'TRUE', 'Give STRONG/MEDIUM games sort priority bonus'],
-    ['', '', ''],
-    ['──── ROBBERS (UPSETS) ────', '', ''],
-    ['enable_robbers', 'TRUE', 'Enable ROBBERS (upset detection) picks'],
-    ['robber_min_conf', 54, 'Minimum confidence % for ROBBER picks'],
-    ['robber_max_picks', 10, 'Maximum ROBBER picks to include'],
-    ['robber_max_per_slip', 2, 'Maximum ROBBERS per accumulator slip'],
-    ['', '', ''],
-    ['──── FIRST HALF 1X2 ────', '', ''],
-    ['enable_first_half', 'TRUE', 'Enable First Half 1x2 predictions'],
-    ['first_half_min_conf', 58, 'Minimum confidence % for 1H picks'],
-    ['first_half_max_per_slip', 3, 'Maximum 1H picks per slip'],
-    ['', '', ''],
-    ['──── FULL TIME O/U ────', '', ''],
-    ['enable_ft_ou', 'TRUE', 'Enable Full Time Over/Under predictions'],
-    ['ft_ou_min_conf', 55, 'Minimum confidence % for FT O/U'],
-    ['ft_ou_min_ev', 0.005, 'Minimum EV for FT O/U (decimal)'],
-    ['ft_ou_max_per_slip', 3, 'Maximum FT O/U picks per slip'],
-    ['', '', ''],
-    ['──── ENHANCED QUARTER ────', '', ''],
-    ['enable_enhanced_highest_q', 'TRUE', 'Use enhanced highest quarter from MODULE 9'],
-    ['', '', ''],
-    ['──── METADATA ────', '', ''],
-    ['last_updated', new Date(), 'Auto-updated timestamp'],
-    ['version', 'v2.11', 'Config version']
+  // Canonical key list — all keys this module needs, with defaults
+  var canonical = [
+    ['banker_threshold',        60,      'Minimum confidence % for Banker picks'],
+    ['min_banker_odds',         1.01,    'Minimum odds for bankers'],
+    ['max_banker_odds',         3.0,     'Maximum odds for bankers'],
+    ['sniper_min_margin',       2.5,     'Minimum margin for Sniper spread picks'],
+    ['max_snipers_per_game',    2,       'Maximum Snipers per match (HIGH_QTR exempt)'],
+    ['includeOUSignals',        'TRUE',  'Include Over/Under signals'],
+    ['ouMinConf',               50,      'Minimum confidence % for O/U'],
+    ['ouMinEdge',               2.0,     'Minimum edge score for O/U picks'],
+    ['ou_min_ev',               5,       'Minimum EV % for O/U'],
+    ['min_edge_score',          0.0,     'Global minimum edge score (0 = disabled)'],
+    ['prefer_directional',      'TRUE',  'Use ou-best-dir / ou-best column'],
+    ['include_highest_quarter', 'TRUE',  'Include Highest Scoring Quarter as Sniper'],
+    ['hq_min_confidence',       55,      'Minimum confidence % for HQ picks'],
+    ['hq_skip_ties',            'TRUE',  'Skip tied-quarter HQ picks'],
+    ['includeHQSignals',        'TRUE',  'Include HQ signals in accumulator'],
+    ['hq_enabled',              'TRUE',  'Master toggle for HQ processing'],
+    ['prefer_strong_tier',      'TRUE',  'Give STRONG/MEDIUM games sort priority bonus'],
+    ['enable_robbers',          'TRUE',  'Enable ROBBERS (upset detection) picks'],
+    ['robber_min_conf',         54,      'Minimum confidence % for ROBBER picks'],
+    ['robber_max_picks',        10,      'Maximum ROBBER picks to include'],
+    ['enable_first_half',       'TRUE',  'Enable First Half 1x2 predictions'],
+    ['first_half_min_conf',     58,      'Minimum confidence % for 1H picks'],
+    ['enable_ft_ou',            'TRUE',  'Enable Full Time Over/Under predictions'],
+    ['ft_ou_min_conf',          55,      'Minimum confidence % for FT O/U'],
+    ['ft_ou_min_ev',            0.005,   'Minimum EV for FT O/U (decimal)'],
+    ['enable_enhanced_highest_q', 'TRUE','Use enhanced highest quarter from MODULE 9']
   ];
 
-  sheet.getRange(1, 1, data.length, 3).setValues(data);
-  
-  // Header row formatting
-  sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#d9ead3');
-  
-  // Section header formatting (rows starting with ────)
-  for (var i = 0; i < data.length; i++) {
-    if (String(data[i][0]).indexOf('────') === 0) {
-      sheet.getRange(i + 1, 1, 1, 3).setFontWeight('bold').setBackground('#f3f3f3');
+  if (isNew) {
+    // Write header + all canonical rows on a fresh sheet
+    var rows = [['Parameter', 'Value', 'Description']];
+    for (var ci = 0; ci < canonical.length; ci++) {
+      rows.push(canonical[ci]);
+    }
+    rows.push(['last_updated', new Date(), 'Auto-updated timestamp']);
+    rows.push(['version', 'v2.12', 'Config version']);
+
+    sheet.getRange(1, 1, rows.length, 3).setValues(rows);
+    sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#d9ead3');
+    sheet.autoResizeColumns(1, 2);
+    sheet.setColumnWidth(3, 350);
+    Logger.log('Config_Accumulator created fresh (createAccumulatorConfigSheet)');
+
+  } else {
+    // Existing sheet — only append missing keys, never overwrite
+    var existing = sheet.getDataRange().getValues();
+    var existingKeys = {};
+    for (var ei = 0; ei < existing.length; ei++) {
+      var ek = String(existing[ei][0] || '').trim().toLowerCase().replace(/[\s_\-]+/g, '');
+      if (ek) existingKeys[ek] = true;
+    }
+
+    var toAppend = [];
+    for (var ki = 0; ki < canonical.length; ki++) {
+      var rowKey = String(canonical[ki][0] || '').trim().toLowerCase().replace(/[\s_\-]+/g, '');
+      if (!existingKeys[rowKey]) {
+        toAppend.push(canonical[ki]);
+      }
+    }
+
+    if (toAppend.length > 0) {
+      var nextRow = existing.length + 1;
+      sheet.getRange(nextRow, 1, toAppend.length, 3).setValues(toAppend);
+      Logger.log('Config_Accumulator: appended ' + toAppend.length + ' missing keys');
+    } else {
+      Logger.log('Config_Accumulator: all keys already present');
     }
   }
-  
-  // Column sizing
-  sheet.autoResizeColumns(1, 2);
-  sheet.setColumnWidth(3, 350);
-  
-  ss.toast('Config_Accumulator created with all enhancement flags', 'Ma Golide', 3);
-  
+
+  ss.toast('Config_Accumulator is complete and up to date', 'Ma Golide', 3);
   return sheet;
 }
 
@@ -4964,30 +4969,37 @@ var ACCUMULATOR_DEFAULTS = {
   sniperMinMargin: 2.5,
   maxSnipersPerGame: 8,
   includeOUSignals: true,
-  ouMinConf: 55,
+  ouMinConf: 50,
   ouMinEV: 5,
+  ouMinEdge: 2.0,
   minEdgeScore: 0.0,
   preferDirectional: true,
   preferStrongTier: true,
   includeHighestQuarter: true,
   minBankerOdds: 1.01,
   maxBankerOdds: 3.0,
-  
+
+  // HQ controls
+  hqEnabled: true,
+  includeHQSignals: true,
+  hqMinConfidence: 55,
+  hqSkipTies: true,
+
   // ═══════════════════════════════════════════════════════════════════════
-  // NEW: MODULE 9 enhancement flags
+  // MODULE 9 enhancement flags
   // ═══════════════════════════════════════════════════════════════════════
   enableRobbers: true,
   enableFirstHalf: true,
   enableFTOU: true,
   enableEnhancedHighestQ: true,
-  
+
   // ROBBERS config
   robberMinConf: 48,
   robberMaxPicks: 10,
-  
+
   // First Half config
   firstHalfMinConf: 58,
-  
+
   // FT O/U config
   ftOUMinConf: 55,
   ftOUMinEV: 0.005
@@ -5030,13 +5042,25 @@ function loadAccumulatorConfig(ss) {
     if (cfgMap['enablefirsthalf'] !== undefined) cfg.enableFirstHalf = _toBool(cfgMap['enablefirsthalf']);
     if (cfgMap['enableftou'] !== undefined) cfg.enableFTOU = _toBool(cfgMap['enableftou']);
     if (cfgMap['enableenhancedhighestq'] !== undefined) cfg.enableEnhancedHighestQ = _toBool(cfgMap['enableenhancedhighestq']);
-    
+
     if (cfgMap['robberminconf'] !== undefined) cfg.robberMinConf = _toNum(cfgMap['robberminconf'], cfg.robberMinConf);
     if (cfgMap['robbermaxpicks'] !== undefined) cfg.robberMaxPicks = parseInt(cfgMap['robbermaxpicks'], 10) || cfg.robberMaxPicks;
     if (cfgMap['firsthalfminconf'] !== undefined) cfg.firstHalfMinConf = _toNum(cfgMap['firsthalfminconf'], cfg.firstHalfMinConf);
     if (cfgMap['ftouminconf'] !== undefined) cfg.ftOUMinConf = _toNum(cfgMap['ftouminconf'], cfg.ftOUMinConf);
     if (cfgMap['ftouminev'] !== undefined) cfg.ftOUMinEV = _toNum(cfgMap['ftouminev'], cfg.ftOUMinEV);
-    
+
+    // ═══════════════════════════════════════════════════════════════════
+    // OU edge + HQ controls (persisted in Config_Accumulator)
+    // ═══════════════════════════════════════════════════════════════════
+    // Note: cfgMap keys are already lowercased + underscores stripped, so
+    // 'ouMinEdge', 'ou_min_edge', 'oumin_edge' all map to 'ouminedge'
+    if (cfgMap['ouminedge'] !== undefined) cfg.ouMinEdge = _toNum(cfgMap['ouminedge'], cfg.ouMinEdge);
+    if (cfgMap['hqminconfidence'] !== undefined) cfg.hqMinConfidence = _toNum(cfgMap['hqminconfidence'], cfg.hqMinConfidence);
+    if (cfgMap['hqminconf'] !== undefined) cfg.hqMinConfidence = _toNum(cfgMap['hqminconf'], cfg.hqMinConfidence);
+    if (cfgMap['hqskipties'] !== undefined) cfg.hqSkipTies = _toBool(cfgMap['hqskipties']);
+    if (cfgMap['includehqsignals'] !== undefined) cfg.includeHQSignals = _toBool(cfgMap['includehqsignals']);
+    if (cfgMap['hqenabled'] !== undefined) cfg.hqEnabled = _toBool(cfgMap['hqenabled']);
+
   } catch (e) {
     Logger.log('[Config] Error: ' + e.message);
   }

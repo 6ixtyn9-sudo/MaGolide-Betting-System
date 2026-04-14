@@ -1728,68 +1728,122 @@ function createSheetIfMissing_(ss, sheetName) {
 
 
 /**
- * Creates Config_Accumulator sheet with EXACT structure from your live example
+ * Creates Config_Accumulator sheet with EXACT structure from the live config.
+ * IDEMPOTENT: If the sheet already exists, only APPENDS missing keys.
+ *             Never clears or overwrites existing data.
  */
 function createConfigAccumulatorSheet(ss) {
   let sheet = ss.getSheetByName('Config_Accumulator');
-  if (!sheet) {
+  const isNew = !sheet;
+  if (isNew) {
     sheet = ss.insertSheet('Config_Accumulator');
   }
-  sheet.clear();
 
-  const data = [
-    ['config_version', 'v_elite_20260315_1128', '', ''],
-    ['--- LEGACY WEIGHTS ---', '', '', ''],
-    ['rank_weight', '0', '', ''],
-    ['form_weight', '2.5', '', ''],
-    ['h2h_weight', '1.5', '', ''],
-    ['forebet_weight', '3', '', ''],
-    ['variance_weight', '1', '', ''],
-    ['--- NEW WEIGHTS ---', '', '', ''],
-    ['pctWeight', '2', '', ''],
-    ['netRtgWeight', '2', '', ''],
-    ['homeCourtWeight', '1', '', ''],
-    ['momentumWeight', '1', '', ''],
-    ['streakWeight', '1', '', ''],
-    ['--- COMMON PARAMS ---', '', '', ''],
-    ['home_advantage', '3', '', ''],
-    ['score_threshold', '35', '', ''],
-    ['confidence_min', '50', '', ''],
-    ['confidence_max', '95', '', ''],
-    ['--- ELITE PARAMS (NEW) ---', '', '', ''],
-    ['min_samples', '1', '', ''],
-    ['confidence_scale', '30', '', ''],
-    ['bayesian_blending', 'TRUE', '', ''],
-    ['show_all_tiers', 'TRUE', '', ''],
-    ['--- TIER THRESHOLDS ---', '', '', ''],
-    ['tier_strong_min_score', '75', '', ''],
-    ['tier_medium_min_score', '60', '', ''],
-    ['tier_weak_min_score', '50', '', ''],
-    ['--- METRICS ---', '', '', ''],
-    ['Weighted Score %', '92.0%', '', ''],
-    ['Accuracy %', '92.0%', '', ''],
-    ['Coverage %', '21.4%', '', ''],
-    ['Composite Score', '80.21', '', ''],
-    ['Correct Predictions', '23', '', ''],
-    ['Total Predictions', '25', '', ''],
-    ['RISKY Count', '92', '', ''],
-    ['Training Size', '117', '', ''],
-    ['Data Confidence', '87.3%', '', ''],
-    ['--- INFO ---', '', '', ''],
-    ['last_updated', '15/03/2026', '', ''],
-    ['updated_by', 'applyTier1ProposalToConfig (rank 1)', '', ''],
-    ['home_court_weight', '1', '', ''],
-    ['momentum_weight', '1', '', ''],
-    ['net_rtg_weight', '2', '', ''],
-    ['pct_weight', '3', '', ''],
-    ['streak_weight', '1', '', '']
+  // Canonical full config — all keys the sheet must contain
+  const canonical = [
+    ['config_version',          'v_elite_20260315_1128'],
+    ['--- LEGACY WEIGHTS ---',  ''],
+    ['rank_weight',             '0'],
+    ['form_weight',             '2.5'],
+    ['h2h_weight',              '1.5'],
+    ['forebet_weight',          '3'],
+    ['variance_weight',         '1'],
+    ['--- NEW WEIGHTS ---',     ''],
+    ['pctWeight',               '2'],
+    ['netRtgWeight',            '2'],
+    ['homeCourtWeight',         '1'],
+    ['momentumWeight',          '1'],
+    ['streakWeight',            '1'],
+    ['--- COMMON PARAMS ---',   ''],
+    ['home_advantage',          '3'],
+    ['score_threshold',         '35'],
+    ['confidence_min',          '50'],
+    ['confidence_max',          '95'],
+    ['--- ELITE PARAMS (NEW) ---', ''],
+    ['min_samples',             '1'],
+    ['confidence_scale',        '30'],
+    ['bayesian_blending',       'TRUE'],
+    ['show_all_tiers',          'TRUE'],
+    ['--- TIER THRESHOLDS ---', ''],
+    ['tier_strong_min_score',   '75'],
+    ['tier_medium_min_score',   '60'],
+    ['tier_weak_min_score',     '50'],
+    ['--- METRICS ---',         ''],
+    ['Weighted Score %',        '92.00%'],
+    ['Accuracy %',              '92.00%'],
+    ['Coverage %',              '21.40%'],
+    ['Composite Score',         '80.21'],
+    ['Correct Predictions',     '23'],
+    ['Total Predictions',       '25'],
+    ['RISKY Count',             '92'],
+    ['Training Size',           '117'],
+    ['Data Confidence',         '87.30%'],
+    ['home_court_weight',       '1'],
+    ['momentum_weight',         '1'],
+    ['net_rtg_weight',          '2'],
+    ['pct_weight',              '3'],
+    ['streak_weight',           '1'],
+    ['--- ACCUMULATOR SETTINGS ---', ''],
+    ['banker_threshold',        '60'],
+    ['sniper_min_margin',       '2.5'],
+    ['max_snipers_per_game',    '2'],
+    ['--- O/U & HQ SETTINGS ---', ''],
+    ['includeOUSignals',        'TRUE'],
+    ['ouMinConf',               '50'],
+    ['ouMinEdge',               '2'],
+    ['ou_min_ev',               '5'],
+    ['prefer_directional',      'TRUE'],
+    ['include_highest_quarter', 'TRUE'],
+    ['hq_min_confidence',       '55'],
+    ['hq_skip_ties',            'TRUE'],
+    ['includeHQSignals',        'TRUE'],
+    ['hq_enabled',              'TRUE'],
+    ['--- MODULE FLAGS ---',    ''],
+    ['enable_robbers',          'TRUE'],
+    ['robber_min_conf',         '54'],
+    ['enable_first_half',       'TRUE'],
+    ['first_half_min_conf',     '58'],
+    ['enable_ft_ou',            'TRUE'],
+    ['ft_ou_min_conf',          '55'],
+    ['ft_ou_min_ev',            '0.005'],
+    ['--- INFO ---',            ''],
+    ['last_updated',            '15/03/2026'],
+    ['updated_by',              'applyTier1ProposalToConfig (rank 1)']
   ];
 
-  sheet.getRange(1, 1, data.length, 4).setValues(data);
-  sheet.getRange('A:A').setFontWeight('bold');
-  sheet.autoResizeColumns(1, 4);
-  
-  Logger.log('Config_Accumulator created with all weights, thresholds & metrics');
+  if (isNew) {
+    // Fresh sheet — write everything
+    const rows = canonical.map(r => [r[0], r[1], '', '']);
+    sheet.getRange(1, 1, rows.length, 4).setValues(rows);
+    sheet.getRange('A:A').setFontWeight('bold');
+    sheet.autoResizeColumns(1, 4);
+    Logger.log('Config_Accumulator created fresh with all keys');
+  } else {
+    // Existing sheet — only append keys that are missing
+    const existing = sheet.getDataRange().getValues();
+    const existingKeys = new Set();
+    for (let r = 0; r < existing.length; r++) {
+      const k = String(existing[r][0] || '').trim().toLowerCase();
+      if (k) existingKeys.add(k);
+    }
+
+    const toAppend = [];
+    for (const [key, val] of canonical) {
+      const keyNorm = key.trim().toLowerCase();
+      // Skip section headers and keys that already exist
+      if (key.startsWith('---') || existingKeys.has(keyNorm)) continue;
+      toAppend.push([key, val, '', '']);
+    }
+
+    if (toAppend.length > 0) {
+      const nextRow = existing.length + 1;
+      sheet.getRange(nextRow, 1, toAppend.length, 4).setValues(toAppend);
+      Logger.log('Config_Accumulator: appended ' + toAppend.length + ' missing keys');
+    } else {
+      Logger.log('Config_Accumulator: all keys present, nothing to append');
+    }
+  }
+
   return sheet;
 }
 
