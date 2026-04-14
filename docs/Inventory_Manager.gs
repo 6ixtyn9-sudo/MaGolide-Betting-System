@@ -2173,14 +2173,7 @@ function predictQuarters_Tier2(ss) {
   Logger.log('Paths: ' + JSON.stringify(stats.paths));
   Logger.log('[PHASE 2 COMPLETE] Tier2_Log: FORENSIC_CORE_17 + Tier2 diagnostics');
   Logger.log('[PHASE 3 COMPLETE] Tier2 validateConfigState_(threshold, strong_target, medium_target, even_target, config_version)');
-
-  ui.alert(
-    '✅ Tier 2 v3.3 (Anti-Flatline)',
-    'Games: ' + stats.processed + '\n' +
-    'Predictions: ' + allPredictions.length + '\n\n' +
-    'Paths:\n' + JSON.stringify(stats.paths, null, 2),
-    ui.ButtonSet.OK
-  );
+  Logger.log('[Tier2 v3.3] DONE — Games: ' + stats.processed + ' | Predictions: ' + allPredictions.length + ' | Paths: ' + JSON.stringify(stats.paths));
 
   return {
     processed: stats.processed,
@@ -5202,17 +5195,11 @@ function _showResultsDialog(ui, stats, topElite, topStrong, topMedium, fbEnabled
     });
   }
   
-  ui.alert('✅ Unified O/U Complete',
-    '📊 Games: ' + stats.games + ' | Skipped: ' + stats.skipped + '\n\n' +
-    '🎯 Picks: ' + totalFired + ' (OVER: ' + stats.firedOver + ', UNDER: ' + stats.firedUnder + ')\n\n' +
-    '📈 Tier Distribution:\n' +
-    '   ⭐ ELITE: ' + stats.byTier.ELITE + '\n' +
-    '   ★ STRONG: ' + stats.byTier.STRONG + '\n' +
-    '   ● MEDIUM: ' + stats.byTier.MEDIUM + '\n' +
-    '   ○ WEAK: ' + stats.byTier.WEAK + '\n\n' +
-    '🔮 Bayesian: ' + stats.bayesianUsed + ' | FB: ' + stats.fbUsed + '\n\n' +
-    '🏆 TOP PICKS:\n' + (topPicks || 'No qualifying picks') + '\n',
-    ui.ButtonSet.OK);
+  Logger.log('[O/U COMPLETE] Games: ' + stats.games + ' | Picks: ' + totalFired +
+    ' (OVER: ' + stats.firedOver + ', UNDER: ' + stats.firedUnder + ')' +
+    ' | Tiers: ELITE=' + stats.byTier.ELITE + ' STRONG=' + stats.byTier.STRONG +
+    ' MEDIUM=' + stats.byTier.MEDIUM + ' WEAK=' + stats.byTier.WEAK);
+  Logger.log('[O/U TOP PICKS]\n' + (topPicks || 'No qualifying picks'));
 }
 
 function _returnResult(games, picks, fb, version, showUI, ui) {

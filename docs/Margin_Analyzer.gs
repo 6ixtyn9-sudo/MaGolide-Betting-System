@@ -1910,11 +1910,11 @@ function analyzeTier2Accuracy(allGames, statsSheet) {
   const quarterKeys = ['q1', 'q2', 'q3', 'q4'];
   const t2Keys = ['t2-q1', 't2-q2', 't2-q3', 't2-q4'];
 
-  // Check if the required headers exist
-  if (!map['t2-q1'] || !map['q1']) {
-    Logger.log('...analyzeTier2Accuracy: Missing required columns (e.g., "t2-q1" or "q1"). Skipping analysis.');
+  // Check if the required headers exist (use === undefined to avoid false-negative on index 0)
+  if (map['t2-q1'] === undefined || map['q1'] === undefined) {
+    Logger.log('...analyzeTier2Accuracy: No Tier 2 prediction history found (t2-q1/q1 columns absent). Skipping — predictions will use current game data.');
     statsSheet.clear();
-    statsSheet.getRange(1, 1).setValue('Error: Missing "t2-q1" or "q1" columns in Clean/ResultsClean sheets.');
+    statsSheet.getRange(1, 1).setValue('No Tier 2 prediction history yet. Predictions are generated from current game data.');
     return;
   }
 
@@ -3121,28 +3121,15 @@ function generateAccuracyReport(ssArg) {
 
     reportSheet.autoResizeColumns(1, maxCols);
 
-    ss.toast('Accuracy Report generated (' + totalHits + '/' + totalBets + ' = ' + overallRate + '%).', 'Ma Golide', 5);
-
     Logger.log('[generateAccuracyReport] Complete: ' + totalHits + '/' + totalBets + ' (' + overallRate + '%)');
-
-    // Show alert if UI available
-    if (ui) {
-      ui.alert('Accuracy Report Complete',
-        'Total Bets Graded: ' + totalBets + '\n' +
-        'Total Hits: ' + totalHits + '\n' +
-        'Overall Hit Rate: ' + overallRate + '%\n\n' +
-        '(See ' + SHEET_REPORT + ' sheet for details)',
-        ui.ButtonSet.OK);
-    }
+    ss.toast('Accuracy Report generated (' + totalHits + '/' + totalBets + ' = ' + overallRate + '%).', 'Ma Golide', 5);
 
     return reports;
 
   } catch (err) {
     Logger.log('ERROR: ' + err.message);
     Logger.log(err.stack);
-    if (ui) {
-      ui.alert('Error', err.message, ui.ButtonSet.OK);
-    }
+    ss.toast('Accuracy Report Error: ' + err.message, 'Ma Golide', 10);
     return null;
   }
 }

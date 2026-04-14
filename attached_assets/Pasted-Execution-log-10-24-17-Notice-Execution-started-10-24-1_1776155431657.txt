@@ -1,0 +1,866 @@
+Execution log
+10:24:17	Notice	Execution started
+10:24:19	Info	[MG_ZF] Multi-league strict patch installed. Version=MULTI-LEAGUE-STRICT-2.0 GuardMode=strict
+10:24:20	Info	[MG_FIX] Config_Tier1: appended 5 config aliases
+10:24:22	Info	[MG_FIX] Config_Tier2: appended 0 config aliases
+10:24:22	Info	[clearAllTier2Caches] All Tier 2 caches cleared:
+10:24:22	Info	  - TIER2_MARGIN_STATS_CACHE
+10:24:22	Info	  - TIER2_VENUE_STATS_CACHE
+10:24:22	Info	  - CONFIG_TIER2
+10:24:22	Info	  - T2OU_CACHE
+10:24:22	Info	  - t2_lastEvalResults
+10:24:23	Info	[MG_FIX] UpcomingClean repair mode=PRE groups=0 headerWrites=0 cellUpdates=0
+10:24:32	Info	===== INITIATING THE WHOLE SHEBANG =====
+10:24:32	Info	========================================
+10:24:32	Info	MODULE 0: GENESIS - Starting
+10:24:32	Info	Spreadsheet: United States (NBA) J10
+10:24:32	Info	Timestamp: 2026-04-14T08:24:32.454Z
+10:24:32	Info	========================================
+10:24:32	Info	--- Creating Core Sheets ---
+10:24:32	Info	  [EXISTS]  SportConfig - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Raw - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Clean - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  ResultsRaw - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  ResultsClean - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Standings - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  UpcomingRaw - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  UpcomingClean - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Config_Accumulator - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Config_Tier1 - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Config_Tier1_Proposals - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Config_Tier2 - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Config_Tier2_Proposals - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Stats - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  LeagueQuarterStats - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  LeagueQuarterO_U_Stats - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Analysis_Tier1 - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  TeamQuarterStats_Tier2 - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Stats_Tier2_Accuracy - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Stats_Tier2_Simulation - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Stats_Tier2_Optimization - skipped (data preserved)
+10:24:32	Info	  [EXISTS]  Satellite_Identity - skipped (data preserved)
+10:24:32	Info	Core Sheets Summary: Created=0, Already Existed=22
+10:24:32	Info	--- Initialising Tier Configs (v4.0 - Full Coverage) ---
+10:24:33	Info	Config_Tier1: Backfilled 0 missing keys
+10:24:33	Info	Config_Tier2: Backfilled 0 missing keys
+10:24:33	Info	--- Tier Configs Initialisation Complete ---
+10:24:33	Info	Satellite_Identity: master entry already present — skipped
+10:24:34	Info	[PHASE 4 COMPLETE] Satellite_Identity sheet + ResultsClean canonical header merge (append-only)
+10:24:34	Info	--- Creating Loop Sheets ---
+10:24:35	Info	UpcomingRaw: Found 1 game blocks
+10:24:35	Info	Loop slots to create: 3 (games + 2 buffer)
+10:24:35	Info	  [EXISTS]  RawH2H_1 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanH2H_1 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawRecentHome_1 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanRecentHome_1 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawRecentAway_1 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanRecentAway_1 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawH2H_2 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanH2H_2 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawRecentHome_2 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanRecentHome_2 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawRecentAway_2 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanRecentAway_2 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawH2H_3 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanH2H_3 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawRecentHome_3 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanRecentHome_3 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  RawRecentAway_3 - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  CleanRecentAway_3 - skipped (data preserved)
+10:24:35	Info	Loop Sheets Summary: Created=0, Already Existed=18
+10:24:35	Info	--- Creating Output Sheets ---
+10:24:35	Info	  [EXISTS]  Bet_Slips - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  Acca_Central - skipped (data preserved)
+10:24:35	Info	  [EXISTS]  Config_Accumulator - skipped (data preserved)
+10:24:35	Info	Config_Accumulator created with all weights, thresholds & metrics
+10:24:35	Info	Config_Tier1 created with FULL legacy template (3 columns + comments)
+10:24:35	Info	Output Sheets Summary: Created=0, Already Existed=3
+10:24:35	Info	========================================
+10:24:35	Info	MODULE 0: GENESIS - Complete
+10:24:35	Info	========================================
+10:24:35	Info	[Shebang] OK  Genesis via setupAllSheets()
+10:24:35	Info	--- Starting Full Parse ---
+10:24:35	Info	Validating "Standings" sheet...
+10:24:36	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:36	Info	"Standings" sheet is valid. Found 30 teams.
+10:24:36	Info	Parsing "Raw" sheet...
+10:24:37	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:37	Info	runParseRaw: Loaded 30 team names from Standings.
+10:24:39	Info	runParseRaw: Success. Wrote 624 records to "Clean".
+10:24:39	Info	===== STARTING PARSE RESULTS =====
+10:24:42	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:43	Info	runParseResults: Success. Wrote 7 records to "ResultsClean".
+10:24:43	Info	===== PARSE RESULTS COMPLETE =====
+10:24:43	Info	Parsing "UpcomingRaw" sheet...
+10:24:44	Info	[Q Preserve] Saved Q1–Q4/OT/FT Score/Status for 7 games
+10:24:44	Info	[OU Preserve] Saved lines for 7 games
+10:24:45	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:46	Info	Q1–Q4 backup: preserved 5 games
+10:24:47	Info	Fallback restore for: Utah Jazz vs Charlotte Hornets
+10:24:47	Info	Fallback restore for: Boston Celtics vs San Antonio Spurs
+10:24:47	Info	Fallback restore for: Chicago Bulls vs Dallas Mavericks
+10:24:47	Info	Fallback restore for: Detroit Pistons vs Los Angeles Clippers
+10:24:47	Info	Fallback restore for: Indiana Pacers vs Miami Heat
+10:24:47	Info	Parsed: 7 games | Restored Q1–Q4: 5 (5 via fallback)
+10:24:47	Info	[OU Restore] Restored preserved book lines.
+10:24:47	Info	[Q Restore] Restored manual Q1–Q4/OT/FT Score/Status for 7/7 games.
+10:24:47	Info	runParseUpcoming: Success. Wrote 7 records to "UpcomingClean".
+10:24:50	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:50	Info	runParseH2H: Success - RawH2H_1 -> CleanH2H_1
+10:24:51	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:51	Info	runParseRecent: Success - RawRecentHome_1 -> CleanRecentHome_1
+10:24:52	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:52	Info	runParseRecent: Success - RawRecentAway_1 -> CleanRecentAway_1
+10:24:55	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:55	Info	runParseH2H: Success - RawH2H_2 -> CleanH2H_2
+10:24:58	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:58	Info	runParseRecent: Success - RawRecentHome_2 -> CleanRecentHome_2
+10:24:59	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:24:59	Info	runParseRecent: Success - RawRecentAway_2 -> CleanRecentAway_2
+10:25:01	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:01	Info	runParseH2H: Success - RawH2H_3 -> CleanH2H_3
+10:25:04	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:04	Info	runParseRecent: Success - RawRecentHome_3 -> CleanRecentHome_3
+10:25:05	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:05	Info	runParseRecent: Success - RawRecentAway_3 -> CleanRecentAway_3
+10:25:07	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:07	Info	runParseH2H: Success - RawH2H_4 -> CleanH2H_4
+10:25:10	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:10	Info	runParseRecent: Success - RawRecentHome_4 -> CleanRecentHome_4
+10:25:12	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:12	Info	runParseRecent: Success - RawRecentAway_4 -> CleanRecentAway_4
+10:25:13	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:13	Info	runParseH2H: Success - RawH2H_5 -> CleanH2H_5
+10:25:16	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:16	Info	runParseRecent: Success - RawRecentHome_5 -> CleanRecentHome_5
+10:25:17	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:17	Info	runParseRecent: Success - RawRecentAway_5 -> CleanRecentAway_5
+10:25:19	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:19	Info	runParseH2H: Success - RawH2H_6 -> CleanH2H_6
+10:25:21	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:21	Info	runParseRecent: Success - RawRecentHome_6 -> CleanRecentHome_6
+10:25:23	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:23	Info	runParseRecent: Success - RawRecentAway_6 -> CleanRecentAway_6
+10:25:25	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:25	Info	runParseH2H: Success - RawH2H_7 -> CleanH2H_7
+10:25:27	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:27	Info	runParseRecent: Success - RawRecentHome_7 -> CleanRecentHome_7
+10:25:28	Info	loadTeamNamesFromStandings: Loaded 30 teams from "Standings"
+10:25:28	Info	runParseRecent: Success - RawRecentAway_7 -> CleanRecentAway_7
+10:25:29	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawH2H_8
+10:25:29	Info	runParseH2H: Success - RawH2H_8 -> CleanH2H_8
+10:25:30	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentHome_8
+10:25:30	Info	runParseRecent: Success - RawRecentHome_8 -> CleanRecentHome_8
+10:25:31	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentAway_8
+10:25:31	Info	runParseRecent: Success - RawRecentAway_8 -> CleanRecentAway_8
+10:25:31	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawH2H_9
+10:25:31	Info	runParseH2H: Success - RawH2H_9 -> CleanH2H_9
+10:25:32	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentHome_9
+10:25:32	Info	runParseRecent: Success - RawRecentHome_9 -> CleanRecentHome_9
+10:25:33	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentAway_9
+10:25:33	Info	runParseRecent: Success - RawRecentAway_9 -> CleanRecentAway_9
+10:25:33	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawH2H_10
+10:25:33	Info	runParseH2H: Success - RawH2H_10 -> CleanH2H_10
+10:25:37	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentHome_10
+10:25:37	Info	runParseRecent: Success - RawRecentHome_10 -> CleanRecentHome_10
+10:25:38	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentAway_10
+10:25:38	Info	runParseRecent: Success - RawRecentAway_10 -> CleanRecentAway_10
+10:25:38	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawH2H_11
+10:25:38	Info	runParseH2H: Success - RawH2H_11 -> CleanH2H_11
+10:25:39	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentHome_11
+10:25:39	Info	runParseRecent: Success - RawRecentHome_11 -> CleanRecentHome_11
+10:25:40	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentAway_11
+10:25:40	Info	runParseRecent: Success - RawRecentAway_11 -> CleanRecentAway_11
+10:25:40	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawH2H_12
+10:25:40	Info	runParseH2H: Success - RawH2H_12 -> CleanH2H_12
+10:25:41	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentHome_12
+10:25:41	Info	runParseRecent: Success - RawRecentHome_12 -> CleanRecentHome_12
+10:25:42	Info	[parseTier2Sheet] [WARN] Raw sheet empty: RawRecentAway_12
+10:25:42	Info	runParseRecent: Success - RawRecentAway_12 -> CleanRecentAway_12
+10:25:42	Info	--- Parsing Complete ---
+10:25:42	Info	[Shebang] OK  Parsers via runAllParsers()
+10:25:42	Info	[Shebang] ZERO_FALLBACK overlay: not detected
+10:25:42	Info	[runAllHistoricalAnalyzers:INFO] ═══════════════════════════════════════════════════════
+10:25:42	Info	[runAllHistoricalAnalyzers:INFO] ENTRY v2.2.0
+10:25:42	Info	[runAllHistoricalAnalyzers:DEBUG] ID: 1pG8O4Fh77FFM0wV4BJY-8WnW0R-umzdexzdDPnlCth8
+10:25:43	Info	[runAllHistoricalAnalyzers:INFO] Loaded "Clean": 624 rows
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] Loaded "ResultsClean": 7 rows
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] Total games: 631
+10:25:44	Info	[analyzeWinnerAccuracy] Starting...
+10:25:44	Info	[analyzeWinnerAccuracy] Processed=631 skipped=0
+10:25:44	Info	[analyzeWinnerAccuracy] Complete. Accuracy=60.9%
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] ✓ winnerAccuracy (15ms)
+10:25:44	Info	Running analyzeQuarterWinner...
+10:25:44	Info	...analyzeQuarterWinner complete.
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] ✓ quarterWinner (17ms)
+10:25:44	Info	Running analyzeQuarterOU...
+10:25:44	Info	...analyzeQuarterOU complete.
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] ✓ quarterOU (14ms)
+10:25:44	Info	Running analyzeTier2Accuracy...
+10:25:44	Info	...analyzeTier2Accuracy: Missing required columns (e.g., "t2-q1" or "q1"). Skipping analysis.
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] ✓ tier2Accuracy (6ms)
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] ═══════════════════════════════════════════════════════
+10:25:44	Info	[runAllHistoricalAnalyzers:INFO] EXIT games=631 ms=2355 errors=0
+10:25:45	Info	[Shebang] OK  Historical Analysis via runAllHistoricalAnalyzers()
+10:25:46	Info	[MG_FIX] UpcomingClean repair mode=PRE groups=0 headerWrites=0 cellUpdates=0
+10:25:46	Info	═══════════════════════════════════════════════════════════════
+10:25:46	Info	STARTING TIER 1 ANALYSIS (Complete Patched v3.3)
+10:25:46	Info	═══════════════════════════════════════════════════════════════
+10:25:46	Info	[loadTier1Config] ✓ Loaded config version: v_elite_20260315_1128 | Confidence: [50-95] | Modules: FH=true, ROB=true, FTOU=true, EHQ=true
+10:25:46	Info	[Config] ✓ Loaded version: v_elite_20260315_1128
+10:25:46	Info	[Config] Confidence bounds: [50-95]
+10:25:47	Info	[buildPredictionKeyMap] Loaded 7 existing prediction keys.
+10:25:47	Info	[Predictions] ✓ Loaded prediction key map
+10:25:47	Info	[Sheets] ✓ All required sheets found
+10:25:50	Info	[Data] ✓ Loaded 7 upcoming, 631 historical games
+10:25:50	Info	[Standings] ✓ Loaded 60 teams
+10:25:51	Info	[Stats] ✓ Loaded league stats: overall, Overall, nba, NBA, draws, Draws
+10:25:51	Info	[QuarterStats] ✓ Loaded quarter stats
+10:25:52	Info	[_loadVarianceMap] Missing columns. Found: magolidewinneraccuracyhistorical
+10:25:52	Info	[Headers] UpcomingClean keys: league, game_type, home, away, date, time, prob_, pred, pred_score, avg, odds, q1, q2, q3, q4
+10:25:53	Info	!!! ERROR in analyzeTier1: MG_ZF_STRICT_BLOCKED [safeNum_] unlabelled raw=undefined fallback=0
+10:25:53	Info	Stack: Error: MG_ZF_STRICT_BLOCKED [safeNum_] unlabelled raw=undefined fallback=0
+    at g.<computed> (Sheet_Setup.gs:5498:19)
+    at calculateMaGolideScore (Forecaster.gs:2122:48)
+    at Object.analyzeTier1 (Forecaster.gs:2488:25)
+    at g.<computed> [as fn] (Sheet_Setup.gs:6739:22)
+    at callResolved (Sheet_Setup.gs:2517:29)
+    at runGuardedStage (Sheet_Setup.gs:2570:7)
+    at _runWholeShebang_ (Sheet_Setup.gs:2609:5)
+    at runTheWholeShebang (Sheet_Setup.gs:2436:10)
+    at g.<computed> (Sheet_Setup.gs:6723:22)
+    at __GS_INTERNAL_top_function_call__.gs:1:8
+10:25:57	Info	[MG_FIX] UpcomingClean repair mode=POST groups=0 headerWrites=0 cellUpdates=0
+10:25:57	Info	[Shebang] OK  Tier 1 Forecast via analyzeTier1()
+10:25:57	Info	[Shebang] Shared Context Initialized for O/U -> HQ Bridge!
+10:25:57	Info	===== STARTING TIER 2 DEEP DIVE (MARGINS) =====
+10:25:57	Info	[MG_FIX] UpcomingClean repair mode=PRE groups=0 headerWrites=0 cellUpdates=0
+10:25:57	Info	═══════════════════════════════════════════════════════════════════
+10:25:57	Info	    ELITE TIER 2 v3.3 (Anti-Flatline + Robust Headers)
+10:25:57	Info	═══════════════════════════════════════════════════════════════════
+10:26:07	Info	[loadTier2Config] Loaded 66 settings from "Config_Tier2" for league: global
+10:26:07	Info	[computeBacktestedTier2Thresholds_] ═══════════════════════════════════════════════════════════
+10:26:07	Info	[computeBacktestedTier2Thresholds_] ADAPTIVE THRESHOLD LEARNING v2.4.0
+10:26:07	Info	[computeBacktestedTier2Thresholds_] Supports Q1H/Q1A AND Q1 "26-30" formats
+10:26:07	Info	[computeBacktestedTier2Thresholds_] Priority: CleanBacktested → Tier2_Accuracy → Tier2_Log → Clean+Stats
+10:26:07	Info	[computeBacktestedTier2Thresholds_] Config: minMargin=0.5, minQuarterSamples=30
+10:26:07	Info	[computeBacktestedTier2Thresholds_] ═══════════════════════════════════════════════════════════
+10:26:07	Info	[computeBacktestedTier2Thresholds_] Trying CleanBacktested (rolling approach)...
+10:26:07	Info	[computeBacktestedTier2Thresholds_] No CleanBacktested sheets found
+10:26:07	Info	[computeBacktestedTier2Thresholds_] Trying Tier2_Accuracy...
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Tier2_Accuracy loaded: 2 total
+10:26:08	Info	[computeBacktestedTier2Thresholds_] ✓ Using 2 samples from Tier2_Accuracy
+10:26:08	Info	[computeBacktestedTier2Thresholds_] ───────────────────────────────────────
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Data source: TIER2_ACCURACY
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Total samples: 2 | Overall hit rate: 0.0%
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Quarter samples: Q1=1, Q2=0, Q3=1, Q4=0
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Quarter hit rates: Q1=0.0%, Q2=N/A, Q3=0.0%, Q4=N/A
+10:26:08	Info	[computeBacktestedTier2Thresholds_] ───────────────────────────────────────
+10:26:08	Info	[computeBacktestedTier2Thresholds_] OVERALL (n=2, hitRate=0.0%, conf=20%)
+10:26:08	Info	[computeBacktestedTier2Thresholds_]   Learned: EVEN=2.5 MED=4.5 STRONG=6.5
+10:26:08	Info	[computeBacktestedTier2Thresholds_]   Blended: EVEN=2.5 MED=4.5 STRONG=6.5
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Q1: Only 1 samples (< 30) → using OVERALL thresholds
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Q2: No samples → using OVERALL thresholds
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Q3: Only 1 samples (< 30) → using OVERALL thresholds
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Q4: No samples → using OVERALL thresholds
+10:26:08	Info	[computeBacktestedTier2Thresholds_] ═══════════════════════════════════════════════════════════
+10:26:08	Info	[computeBacktestedTier2Thresholds_] SUCCESS: PRIOR_WEIGHTED thresholds from TIER2_ACCURACY
+10:26:08	Info	[computeBacktestedTier2Thresholds_] Samples: 2 | Confidence: 20% | Hit rate: 0.0%
+10:26:08	Info	[computeBacktestedTier2Thresholds_] OVERALL: EVEN=2.5 MED=4.5 STRONG=6.5
+10:26:08	Info	[computeBacktestedTier2Thresholds_] ═══════════════════════════════════════════════════════════
+10:26:08	Info	[Config] ShrinkK=8, MomCapFrac=0.4, Adaptive=ON
+10:26:09	Info	loadTier2MarginStats: Building from clean sheets (PATCHED v2)...
+10:26:22	Info	loadTier2MarginStats: Complete (PATCHED v2). 21 sheets, 668 games, 30 teams. Skipped empty=15. RealTotals=30, ReconstructedTotals=0
+10:26:35	Info	[buildTeamQuarterWinStatsFromClean_] 36 sheets scanned, 21 used, 15 skipped, 534 unique games, 30 teams
+10:26:35	Info	[t2ou_loadTeamQuarterStats_] Built from clean sheets: 30 teams
+10:26:35	Info	
+10:26:35	Info	[PHASE] Generating predictions...
+10:27:03	Info	═══════════════════════════════════════════════════════════════════
+10:27:03	Info	    v3.3 COMPLETE
+10:27:03	Info	═══════════════════════════════════════════════════════════════════
+10:27:03	Info	Processed: 7 | Skipped: 0
+10:27:03	Info	Tier Distribution: STRONG=0, MEDIUM=0, WEAK=2, EVEN=26
+10:27:03	Info	Paths: {"tier2_stats":28,"partial_stats":0,"quarter_winrate_fallback":0,"rank_fallback":0}
+10:27:03	Info	[PHASE 2 COMPLETE] Tier2_Log: FORENSIC_CORE_17 + Tier2 diagnostics
+10:27:03	Info	[PHASE 3 COMPLETE] Tier2 validateConfigState_(threshold, strong_target, medium_target, even_target, config_version)
+10:27:40	Info	[MG_FIX] UpcomingClean repair mode=POST groups=0 headerWrites=0 cellUpdates=0
+10:27:58	Info	===== TIER 2 DEEP DIVE (MARGINS) COMPLETE =====
+10:27:58	Info	[Shebang] OK  Tier 2 Margins via runTier2_DeepDive()
+10:27:58	Info	[MG_FIX] UpcomingClean repair mode=PRE groups=0 headerWrites=0 cellUpdates=0
+10:27:59	Info	═══════════════════════════════════════════════════════════════
+10:27:59	Info	  UNIFIED O/U PREDICTIONS (v7.0-UNIFIED-PATCHED-R3)
+10:27:59	Info	  Forebet + Bayesian + Tier System
+10:27:59	Info	═══════════════════════════════════════════════════════════════
+10:27:59	Info	[R4-P2] Shared gameContext active: runId=6eab44a9-6803-4427-8649-bdf886f1bc20
+10:27:59	Info	[Config] Edge threshold: 4.0%
+10:27:59	Info	[Config] Min EV: 0.50%
+10:27:59	Info	[Config] Confidence scale: 15
+10:27:59	Info	[Forebet] Enabled but column not found
+10:28:00	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_1": 18/18 rows used
+10:28:00	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_1": 42/42 rows used
+10:28:01	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_1": 42/42 rows used
+10:28:01	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_2": 11/11 rows used
+10:28:02	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_2": 41/41 rows used
+10:28:02	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_2": 40/40 rows used
+10:28:03	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_3": 11/11 rows used
+10:28:03	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_3": 42/42 rows used
+10:28:04	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_3": 42/42 rows used
+10:28:04	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_4": 10/10 rows used
+10:28:06	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_4": 41/41 rows used
+10:28:06	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_4": 39/39 rows used
+10:28:07	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_5": 12/12 rows used
+10:28:08	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_5": 41/41 rows used
+10:28:08	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_5": 43/43 rows used
+10:28:10	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_6": 16/16 rows used
+10:28:14	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_6": 41/41 rows used
+10:28:15	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_6": 42/42 rows used
+10:28:15	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanH2H_7": 13/13 rows used
+10:28:15	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentHome_7": 43/43 rows used
+10:28:16	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Sheet "CleanRecentAway_7": 38/38 rows used
+10:28:22	Info	[t2ou_buildTotalsStatsFromCleanSheets_] v2.5 COMPLETE: 30 teams, 21/36 sheets, 668/668 rows
+10:28:22	Info	[t2ou_buildTotalsStatsFromCleanSheets_] Diag: {"sheetsSeen":106,"sheetsMatched":36,"sheetsProcessed":21,"sheetsSkipped":15,"rowsScanned":668,"rowsUsed":668,"rowsSkippedNoTeams":0,"rowsSkippedInvalidScores":0}
+10:28:22	Info	[Cache] Built: 30 teams
+10:28:22	Info	[Fix3A] Dynamic league: Q1 mu=59.2 sd=8.3 n=668
+10:28:22	Info	[R4-P2] ctx.ou: processed=7, games in ctx=7
+10:28:22	Info	
+10:28:22	Info	═══════════════════════════════════════════════════════════════════
+10:28:22	Info	    O/U RESULTS SUMMARY
+10:28:22	Info	═══════════════════════════════════════════════════════════════════
+10:28:22	Info	Games: 7 | Picks: 20 | Skipped: 0
+10:28:22	Info	OVER: 0 | UNDER: 20
+10:28:22	Info	Forebet used: 0 | Bayesian: 0
+10:28:22	Info	Tiers: ELITE=3, STRONG=7, MEDIUM=7, WEAK=3
+10:28:22	Info	
+10:28:22	Info	⭐ TOP ELITE (3):
+10:28:22	Info	  1. Detroit Pistons vs Los Angeles Clippers Q1: Over 52.5 (edge: 8.32)
+10:28:22	Info	  2. Chicago Bulls vs Dallas Mavericks Q2: Under 60.5 (edge: 7.34)
+10:28:22	Info	  3. Utah Jazz vs Charlotte Hornets Q1: Over 58.5 (edge: 6.83)
+10:28:22	Info	
+10:28:22	Info	★ TOP STRONG (7):
+10:28:22	Info	  1. Indiana Pacers vs Miami Heat Q3: Under 58.5 (edge: 3.47)
+10:28:22	Info	  2. Detroit Pistons vs Los Angeles Clippers Q4: Over 53.5 (edge: 2.88)
+10:28:22	Info	  3. Utah Jazz vs Charlotte Hornets Q4: Under 59.5 (edge: 2.68)
+10:28:22	Info	  4. Utah Jazz vs Charlotte Hornets Q3: Under 62.5 (edge: 2.55)
+10:28:22	Info	  5. Detroit Pistons vs Los Angeles Clippers Q2: Over 52.5 (edge: 2.40)
+10:28:22	Info	
+10:28:22	Info	● TOP MEDIUM (7):
+10:28:22	Info	  1. Boston Celtics vs San Antonio Spurs Q2: Under 59.5 (edge: 1.32)
+10:28:22	Info	  2. Indiana Pacers vs Miami Heat Q2: Under 59.5 (edge: 1.00)
+10:28:22	Info	  3. Chicago Bulls vs Dallas Mavericks Q4: Over 54.5 (edge: 0.89)
+10:28:25	Info	[COMPLETE] T2 O/U: 7 games, 20 picks
+10:28:25	Info	[PHASE 2 COMPLETE] OU_Log: FORENSIC_CORE_17 + O/U diagnostics
+10:28:25	Info	[PHASE 3 COMPLETE] OU_CFG merge (Config_Tier2) + validateConfigState_(VERSION, BREAKEVEN_PROB, JUICE, fallbackSd)
+10:28:26	Info	[MG_FIX] UpcomingClean repair mode=POST groups=0 headerWrites=0 cellUpdates=0
+10:28:26	Info	[Shebang] OK  Tier 2 O/U via runTier2OU()
+10:28:26	Info	[MG_FIX] UpcomingClean repair mode=PRE groups=0 headerWrites=0 cellUpdates=0
+10:28:26	Info	[GLOBAL processEnhancements FORWARDER] routing to Elite.processEnhancements
+10:28:26	Info	[Elite:undefined] FINGERPRINT: Elite IIFE processEnhancements is running
+10:28:26	Info	[Elite:processEnhancements] ENTER mode=SPREADSHEET
+10:28:26	Info	loadTier2MarginStats: Using cache (31 keys)
+10:28:27	Info	[Elite:processEnhancements] Shared ctx store FOUND
+10:28:27	Info	[Elite:processEnhancements] GAME_CTX_DUMP keys=key, home, away, league, rowIndex, ouPredictions, ouMeta
+10:28:27	Info	[Elite:ensureCache] Cache invalidated: new spreadsheet
+10:28:27	Info	[Elite:loadLeagueOU] Loaded 4 rows, 1 leagues (headerRowIdx=1)
+10:28:27	Info	[Elite:getQuarterBaseScore] Q1 base=59.4 (source=OU, sigma=8.9)
+10:28:38	Info	[Elite:loadRecent] Loaded 577 recent games, 30 teams
+10:28:38	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=-0.05 away=0.106 -> 0.028
+10:28:38	Info	[Elite:getPaceFactor] Q1 avgTotal=230.2 leagueTotal=230.7 -> 0
+10:28:42	Info	[Elite:loadH2H] Loaded 91 H2H games, 7 matchups
+10:28:42	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=58.8 leagueMean=59.1 n=13 sd=11.52 rel=1 noiseMult=0.92 -> -0.001
+10:28:42	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:42	Info	[Elite:getQuarterBaseScore] Q2 base=58.8 (source=OU, sigma=8.3)
+10:28:42	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.096 away=-0.097 -> -0.097
+10:28:42	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=53.3 leagueMean=57.8 n=13 sd=8.04 rel=1 noiseMult=0.998 -> -0.014
+10:28:42	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:42	Info	[Elite:getQuarterBaseScore] Q3 base=58.1 (source=OU, sigma=8.9)
+10:28:42	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=0.045 away=0.036 -> 0.041
+10:28:42	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=61.2 leagueMean=58.1 n=13 sd=10.3 rel=1 noiseMult=0.968 -> 0.009
+10:28:42	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:42	Info	[Elite:getQuarterBaseScore] Q4 base=52.3 (source=OU, sigma=7.6)
+10:28:42	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=0.082 away=-0.05 -> 0.016
+10:28:42	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=48.5 leagueMean=55.7 n=13 sd=4.5 rel=1 noiseMult=1 -> -0.023
+10:28:42	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:42	Info	[Elite:buildHQModelForGame_] Built HQ model: Memphis Grizzlies vs Brooklyn Nets | top=Q1 | p=0.43 | rel=0.943 | ouBridge=true
+10:28:42	Info	[getTierObject] ENTER: confPct=57.6 → pct=58
+10:28:42	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:42	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:42	Info	[predictFirstHalf1x2] ENTER: Memphis Grizzlies vs Brooklyn Nets
+10:28:42	Info	[predictFirstHalf1x2] Loading H2H and form data...
+10:28:46	Info	[loadRobbersH2HStats] EXIT: 14 matchups
+10:28:46	Info	[predictFirstHalf1x2] H2H loaded: 14 matchups
+10:28:52	Info	[loadRobbersRecentForm] EXIT: 29 teams
+10:28:52	Info	[predictFirstHalf1x2] Form loaded: 29 teams
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.27 (raw=2.7)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: 0.191
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.2514 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=66.4 → pct=66
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Memphis Grizzlies)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 2.7 | Conf: 66.4%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:getQuarterBaseScore] Q1 base=58.5 (source=OU, sigma=7.8)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=-0.045 away=0.2 -> 0.077
+10:28:52	Info	[Elite:getPaceFactor] Q1 avgTotal=231.4 leagueTotal=230.7 -> 0
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=53.4 leagueMean=59.1 n=16 sd=6.06 rel=1 noiseMult=1 -> -0.017
+10:28:52	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:52	Info	[Elite:getQuarterBaseScore] Q2 base=55.6 (source=OU, sigma=8.2)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=0.019 away=0.086 -> 0.052
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=53.6 leagueMean=57.8 n=16 sd=9.73 rel=1 noiseMult=0.945 -> -0.012
+10:28:52	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterBaseScore] Q3 base=57.7 (source=OU, sigma=8.5)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=0.073 away=-0.151 -> -0.039
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=52.4 leagueMean=58.1 n=16 sd=8.46 rel=1 noiseMult=0.98 -> -0.017
+10:28:52	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:52	Info	[Elite:getQuarterBaseScore] Q4 base=58.4 (source=OU, sigma=9.7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=-0.09 away=0.027 -> -0.032
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=53.4 leagueMean=55.7 n=16 sd=7.54 rel=1 noiseMult=1 -> -0.007
+10:28:52	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:52	Info	[Elite:buildHQModelForGame_] Built HQ model: Orlando Magic vs New Orleans Pelicans | top=Q1 | p=0.41 | rel=0.945 | ouBridge=true
+10:28:52	Info	[getTierObject] ENTER: confPct=56.6 → pct=57
+10:28:52	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[predictFirstHalf1x2] ENTER: Orlando Magic vs New Orleans Pelicans
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.367 (raw=3.67)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: 0.4
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.375 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=72.9 → pct=73
+10:28:52	Info	[getTierObject] EXIT: tier=STRONG, weight=0.85
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Orlando Magic)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 3.7 | Conf: 72.9%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:getQuarterBaseScore] Q1 base=63.4 (source=OU, sigma=8.7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=0.126 away=0.2 -> 0.15
+10:28:52	Info	[Elite:getPaceFactor] Q1 avgTotal=241.2 leagueTotal=230.7 -> 0.005
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=57.9 leagueMean=59.1 n=12 sd=8.18 rel=1 noiseMult=1 -> -0.004
+10:28:52	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:52	Info	[Elite:getQuarterBaseScore] Q2 base=56.8 (source=OU, sigma=7.7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.007 away=-0.169 -> -0.088
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=54.3 leagueMean=57.8 n=12 sd=5.55 rel=1 noiseMult=1 -> -0.011
+10:28:52	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterBaseScore] Q3 base=59.8 (source=OU, sigma=9)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=0.2 away=0.089 -> 0.145
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=61.2 leagueMean=58.1 n=12 sd=8.42 rel=1 noiseMult=1 -> 0.01
+10:28:52	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:52	Info	[Elite:getQuarterBaseScore] Q4 base=56.8 (source=OU, sigma=7.9)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=-0.112 away=-0.023 -> -0.067
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=55.3 leagueMean=55.7 n=12 sd=8.04 rel=1 noiseMult=1 -> -0.001
+10:28:52	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:52	Info	[Elite:buildHQModelForGame_] Built HQ model: Utah Jazz vs Charlotte Hornets | top=Q1 | p=0.665 | rel=0.944 | ouBridge=true
+10:28:52	Info	[getTierObject] ENTER: confPct=69.2 → pct=69
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[predictFirstHalf1x2] ENTER: Utah Jazz vs Charlotte Hornets
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.338 (raw=3.38)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: 0.067
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.2752 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=67.7 → pct=68
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Utah Jazz)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 3.4 | Conf: 67.7%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:getQuarterBaseScore] Q1 base=58.7 (source=OU, sigma=7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=0.055 away=0.019 -> 0.037
+10:28:52	Info	[Elite:getPaceFactor] Q1 avgTotal=230 leagueTotal=230.7 -> 0
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=56.5 leagueMean=59.1 n=10 sd=5.57 rel=1 noiseMult=1 -> -0.008
+10:28:52	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:52	Info	[Elite:getQuarterBaseScore] Q2 base=57.5 (source=OU, sigma=9)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.2 away=0.2 -> 0
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=58.4 leagueMean=57.8 n=10 sd=7.06 rel=1 noiseMult=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterBaseScore] Q3 base=57.8 (source=OU, sigma=7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=-0.003 away=-0.158 -> -0.081
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=55.7 leagueMean=58.1 n=10 sd=7.91 rel=1 noiseMult=1 -> -0.007
+10:28:52	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:52	Info	[Elite:getQuarterBaseScore] Q4 base=55 (source=OU, sigma=8.6)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=-0.037 away=0.011 -> -0.013
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=51.4 leagueMean=55.7 n=10 sd=6.96 rel=1 noiseMult=1 -> -0.014
+10:28:52	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:52	Info	[Elite:buildHQModelForGame_] Built HQ model: Boston Celtics vs San Antonio Spurs | top=Q1 | p=0.428 | rel=0.942 | ouBridge=true
+10:28:52	Info	[getTierObject] ENTER: confPct=57.5 → pct=58
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[predictFirstHalf1x2] ENTER: Boston Celtics vs San Antonio Spurs
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.245 (raw=2.45)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: -0.08
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.1699 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=61.4 → pct=61
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Boston Celtics)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 2.4 | Conf: 61.4%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:getQuarterBaseScore] Q1 base=60.2 (source=OU, sigma=8.9)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=-0.007 away=0.116 -> 0.055
+10:28:52	Info	[Elite:getPaceFactor] Q1 avgTotal=229.9 leagueTotal=230.7 -> 0
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=56.6 leagueMean=59.1 n=11 sd=8.54 rel=1 noiseMult=0.999 -> -0.007
+10:28:52	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:52	Info	[Elite:getQuarterBaseScore] Q2 base=55.4 (source=OU, sigma=7.8)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.033 away=-0.039 -> -0.036
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=53.8 leagueMean=57.8 n=11 sd=8.95 rel=1 noiseMult=0.971 -> -0.012
+10:28:52	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterBaseScore] Q3 base=57.8 (source=OU, sigma=7.2)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=-0.071 away=0.067 -> -0.002
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=55.2 leagueMean=58.1 n=11 sd=7.28 rel=1 noiseMult=1 -> -0.009
+10:28:52	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:52	Info	[Elite:getQuarterBaseScore] Q4 base=55.8 (source=OU, sigma=7.2)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=0.019 away=-0.025 -> -0.003
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=56.3 leagueMean=55.7 n=11 sd=4.65 rel=1 noiseMult=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:52	Info	[Elite:buildHQModelForGame_] Built HQ model: Chicago Bulls vs Dallas Mavericks | top=Q1 | p=0.552 | rel=0.943 | ouBridge=true
+10:28:52	Info	[getTierObject] ENTER: confPct=63.7 → pct=64
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[predictFirstHalf1x2] ENTER: Chicago Bulls vs Dallas Mavericks
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.292 (raw=2.92)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: 0.1
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.2479 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=66.2 → pct=66
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Chicago Bulls)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 2.9 | Conf: 66.2%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:getQuarterBaseScore] Q1 base=58 (source=OU, sigma=7.1)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=0.035 away=0.01 -> 0.023
+10:28:52	Info	[Elite:getPaceFactor] Q1 avgTotal=226.7 leagueTotal=230.7 -> -0.002
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=53.4 leagueMean=59.1 n=11 sd=9.91 rel=1 noiseMult=0.937 -> -0.016
+10:28:52	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:52	Info	[Elite:getQuarterBaseScore] Q2 base=55 (source=OU, sigma=7.7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.045 away=0.076 -> 0.015
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=54.7 leagueMean=57.8 n=11 sd=5.91 rel=1 noiseMult=1 -> -0.01
+10:28:52	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterBaseScore] Q3 base=57.2 (source=OU, sigma=7)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=-0.08 away=0.004 -> -0.038
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=56.4 leagueMean=58.1 n=11 sd=10.08 rel=1 noiseMult=0.949 -> -0.005
+10:28:52	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:52	Info	[Elite:getQuarterBaseScore] Q4 base=56.5 (source=OU, sigma=9.4)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=0.022 away=0.088 -> 0.055
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=57.2 leagueMean=55.7 n=11 sd=7.72 rel=1 noiseMult=1 -> 0.005
+10:28:52	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:52	Info	[Elite:buildHQModelForGame_] Built HQ model: Detroit Pistons vs Los Angeles Clippers | top=Q1 | p=0.373 | rel=0.942 | ouBridge=true
+10:28:52	Info	[getTierObject] ENTER: confPct=54.8 → pct=55
+10:28:52	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[predictFirstHalf1x2] ENTER: Detroit Pistons vs Los Angeles Clippers
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.35 (raw=3.5)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: 0.286
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.3352 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=70.9 → pct=71
+10:28:52	Info	[getTierObject] EXIT: tier=STRONG, weight=0.85
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Detroit Pistons)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 3.5 | Conf: 70.9%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:getQuarterBaseScore] Q1 base=59.8 (source=OU, sigma=7.1)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=0.09 away=-0.041 -> 0.024
+10:28:52	Info	[Elite:getPaceFactor] Q1 avgTotal=230.4 leagueTotal=230.7 -> 0
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=57.8 leagueMean=59.1 n=18 sd=6.54 rel=1 noiseMult=1 -> -0.004
+10:28:52	Info	[Elite:getQuarterDistribution] Q1 share=0.256 dist=0.025 bias=0 rel=1 -> 0.025
+10:28:52	Info	[Elite:getQuarterBaseScore] Q2 base=58 (source=OU, sigma=8.4)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.111 away=-0.059 -> -0.085
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=56.4 leagueMean=57.8 n=18 sd=9.34 rel=1 noiseMult=0.973 -> -0.004
+10:28:52	Info	[Elite:getQuarterDistribution] Q2 share=0.251 dist=0.002 bias=0 rel=1 -> 0.002
+10:28:52	Info	[Elite:getQuarterBaseScore] Q3 base=55.1 (source=OU, sigma=9)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=0.022 away=0 -> 0.011
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=54.7 leagueMean=58.1 n=18 sd=12.35 rel=1 noiseMult=0.867 -> -0.009
+10:28:52	Info	[Elite:getQuarterDistribution] Q3 share=0.252 dist=0.007 bias=0 rel=1 -> 0.007
+10:28:52	Info	[Elite:getQuarterBaseScore] Q4 base=53.2 (source=OU, sigma=9.9)
+10:28:52	Info	[Elite:getRecentQuarterTrend] Q4 n=10 home=-0.058 away=0.085 -> 0.013
+10:28:52	Info	[Elite:getH2HQuarterPattern] Q4 h2hAvg=55.4 leagueMean=55.7 n=18 sd=10.49 rel=1 noiseMult=0.931 -> -0.001
+10:28:52	Info	[Elite:getQuarterDistribution] Q4 share=0.241 dist=-0.034 bias=0 rel=1 -> -0.034
+10:28:52	Info	[Elite:buildHQModelForGame_] Built HQ model: Indiana Pacers vs Miami Heat | top=Q1 | p=0.56 | rel=0.945 | ouBridge=true
+10:28:52	Info	[getTierObject] ENTER: confPct=64.1 → pct=64
+10:28:52	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[predictFirstHalf1x2] ENTER: Indiana Pacers vs Miami Heat
+10:28:52	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.013 (raw=0.13)
+10:28:52	Info	[predictFirstHalf1x2] Signal[FORM]: 0.029
+10:28:52	Info	[predictFirstHalf1x2] Combined signal: 0.0167 (signals=2, totalWeight=0.65)
+10:28:52	Info	[getTierObject] ENTER: confPct=51.2 → pct=51
+10:28:52	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:28:52	Info	[predictFirstHalf1x2] RESULT: Home (Indiana Pacers)
+10:28:52	Info	[predictFirstHalf1x2]   Margin: 0.1 | Conf: 51.2%
+10:28:52	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:28:52	Info	[Elite:processEnhancements] EXIT processed=7, ctxGamesFound=7
+10:28:53	Info	[MG_FIX] UpcomingClean repair mode=POST groups=0 headerWrites=0 cellUpdates=0
+10:28:53	Info	[Shebang] OK  Enhancements via runAllEnhancements()
+10:28:53	Info	[MG_FIX] UpcomingClean repair mode=PRE groups=0 headerWrites=0 cellUpdates=0
+10:28:53	Info	═══════════════════════════════════════════════════════════════
+10:28:53	Info	  ACCUMULATOR v3.8.2-CONSOLIDATED-R4B-HQ-GATED
+10:28:53	Info	═══════════════════════════════════════════════════════════════
+10:28:54	Info	[validateConfigState_] Missing required config field: version
+10:28:55	Info	[buildAccumulator] Tier1: 7 rows, 92 headers mapped
+10:28:56	Info	loadTier2MarginStats: Using cache (31 keys)
+10:29:01	Info	[loadRobbersH2HStats] EXIT: 14 matchups
+10:29:12	Info	[loadRobbersRecentForm] EXIT: 29 teams
+10:29:12	Info	[UpcomingClean] Loaded 7 enh-high-q entries
+10:29:12	Info	[detectRobbers] Match: Memphis Grizzlies vs Brooklyn Nets
+10:29:12	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:12	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.55
+10:29:12	Info	[detectRobbers] Resolved odds: home=0, away=0 (direct)
+10:29:12	Info	[detectRobbers] WARNING: Odds not available — using prediction-based fallback (winner/loser mode)
+10:29:12	Info	[detectRobbers] EXIT: Cannot determine sides — no odds and no prediction data
+10:29:12	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:12	Info	[predictFirstHalf1x2] ENTER: Memphis Grizzlies vs Brooklyn Nets
+10:29:12	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.27 (raw=2.7)
+10:29:12	Info	[predictFirstHalf1x2] Signal[FORM]: 0.191
+10:29:12	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:12	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.55
+10:29:12	Info	[predictFirstHalf1x2] Combined signal: 0.2514 (signals=2, totalWeight=0.65)
+10:29:12	Info	[getTierObject] ENTER: confPct=66.4 → pct=66
+10:29:12	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:29:12	Info	[predictFirstHalf1x2] RESULT: Home (Memphis Grizzlies)
+10:29:12	Info	[predictFirstHalf1x2]   Margin: 2.7 | Conf: 66.4%
+10:29:12	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:14	Info	[Elite:derivedLeagueOU] Derived 1 leagues from Clean
+10:29:14	Info	[Elite:getQuarterBaseScore] Q1 base=57.9 (lg=54 team=56.5 [h=28.6,a=28,k=8,n=27/21] h2h=58.8 nH2H=13)
+10:29:14	Info	[Elite:getRecentQuarterTrend] Q1 n=10 home=-0.05 away=0.106 -> 0.028
+10:29:14	Info	[Elite:getPaceFactor] Q1 avgTotal=230.2 leagueTotal=216 -> 0.007
+10:29:14	Info	[Elite:getH2HQuarterPattern] Q1 h2hAvg=58.8 leagueMean=54 n=13 sd=11.52 rel=1 noiseMult=0.92 -> 0.015
+10:29:14	Info	[Elite:getQuarterDistribution] Q1 share=0.25 dist=0 bias=0 rel=0 -> 0
+10:29:14	Info	[Elite:getQuarterBaseScore] Q2 base=55 (lg=54 team=57.7 [h=29,a=28.8,k=8,n=27/21] h2h=53.3 nH2H=13)
+10:29:14	Info	[Elite:getRecentQuarterTrend] Q2 n=10 home=-0.096 away=-0.097 -> -0.097
+10:29:14	Info	[Elite:getH2HQuarterPattern] Q2 h2hAvg=53.3 leagueMean=54 n=13 sd=8.04 rel=1 noiseMult=0.998 -> -0.002
+10:29:14	Info	[Elite:getQuarterDistribution] Q2 share=0.25 dist=0 bias=0 rel=0 -> 0
+10:29:14	Info	[Elite:getQuarterBaseScore] Q3 base=59.3 (lg=54 team=56.1 [h=28.8,a=27.3,k=8,n=27/21] h2h=61.2 nH2H=13)
+10:29:14	Info	[Elite:getRecentQuarterTrend] Q3 n=10 home=0.045 away=0.036 -> 0.041
+10:29:14	Info	[Elite:getH2HQuarterPattern] Q3 h2hAvg=61.2 leagueMean=54 n=13 sd=10.3 rel=1 noiseMult=0.968 -> 0.023
+10:29:14	Info	[Elite:getQuarterDistribution] Q3 share=0.25 dist=0 bias=0 rel=0 -> 0
+10:29:14	Info	[Elite:getQuarterBaseScore] Q4 base=50.5 (lg=54 team=53.6 [h=27.5,a=26.1,k=8,n=27/21] h2h=48.5 nH2H=13)
+10:29:14	Info	[getTierObject] ENTER: confPct=42.1 → pct=42
+10:29:14	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:14	Info	[buildAccumulator] Loaded 7 FT lines from UpcomingClean
+10:29:14	Info	[buildAccumulator] FT O/U: Got line 232 from UpcomingClean for Memphis Grizzlies vs Brooklyn Nets
+10:29:14	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Memphis Grizzlies vs Brooklyn Nets
+10:29:14	Info	[_enh_parseBookLine] Parsing: "232"
+10:29:14	Info	[_enh_parseBookLine] Parsed: 232
+10:29:14	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:14	Info	[predictFTOverUnder] mu=228.42 (TEAM_SUMQTR)
+10:29:14	Info	[predictFTOverUnder] ⛔ SKIP: edge_below_threshold | line=232(ftBookLine) | ev=-0.0316 | edge=-0.0165 | conf=51% | 24ms
+10:29:14	Info	[detectRobbers] ════════════════════════════════════════════════════════════
+10:29:14	Info	[detectRobbers] Match: Orlando Magic vs New Orleans Pelicans
+10:29:14	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:14	Info	[_robbers_resolveOdds_] Pred parse: predRaw="HOME" → pick=1, pickOdds=1.29
+10:29:14	Info	[_robbers_inferOtherOdds_] knownOdds=1.29 → otherOdds=3.51
+10:29:14	Info	[_robbers_resolveOdds_] Inferred: home=1.29, away=3.51
+10:29:14	Info	[detectRobbers] Resolved odds: home=1.29, away=3.51 (inferred from Pred+Odds)
+10:29:14	Info	[detectRobbers] Favorite: Orlando Magic @1.29 | Underdog: New Orleans Pelicans @3.51
+10:29:14	Info	[detectRobbers] H2H: 3/7 = 42.9%
+10:29:14	Info	[detectRobbers] Score: 55 (min: 20) | Heavy fav @1.29 | H2H 43% (3/7) | Quarter edge (1Q) | Value @3.51
+10:29:14	Info	[getTierObject] ENTER: confPct=50 → pct=50
+10:29:14	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:29:14	Info	[_robbers_normalizePick_] New Orleans Pelicans ML @3.51 | Raw=76.3% → Cal=50% | EV=63.8% | Tier=WEAK
+10:29:14	Info	[detectRobbers] ★★★ ROBBER: New Orleans Pelicans ML @3.51 | WEAK | Conf=50% | EV=63.8%
+10:29:14	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:14	Info	[predictFirstHalf1x2] ENTER: Orlando Magic vs New Orleans Pelicans
+10:29:14	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.367 (raw=3.67)
+10:29:14	Info	[predictFirstHalf1x2] Signal[FORM]: 0.4
+10:29:14	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:14	Info	[_robbers_resolveOdds_] Pred parse: predRaw="HOME" → pick=1, pickOdds=1.29
+10:29:14	Info	[_robbers_inferOtherOdds_] knownOdds=1.29 → otherOdds=3.51
+10:29:14	Info	[_robbers_resolveOdds_] Inferred: home=1.29, away=3.51
+10:29:14	Info	[predictFirstHalf1x2] Signal[ODDS]: 0.462
+10:29:14	Info	[predictFirstHalf1x2] Combined signal: 0.3866 (signals=3, totalWeight=0.75)
+10:29:14	Info	[getTierObject] ENTER: confPct=77 → pct=77
+10:29:14	Info	[getTierObject] EXIT: tier=ELITE, weight=1
+10:29:14	Info	[predictFirstHalf1x2] RESULT: Home (Orlando Magic)
+10:29:14	Info	[predictFirstHalf1x2]   Margin: 3.7 | Conf: 77%
+10:29:14	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:14	Info	[getTierObject] ENTER: confPct=54 → pct=54
+10:29:14	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:29:14	Info	[getTierObject] ENTER: confPct=40 → pct=40
+10:29:14	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:14	Info	[HQ GATE] SKIP: Tie skipped (hq_skip_ties=true)
+10:29:14	Info	[buildAccumulator] FT O/U: Got line 231 from UpcomingClean for Orlando Magic vs New Orleans Pelicans
+10:29:14	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Orlando Magic vs New Orleans Pelicans
+10:29:14	Info	[_enh_parseBookLine] Parsing: "231"
+10:29:14	Info	[_enh_parseBookLine] Parsed: 231
+10:29:14	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:14	Info	[predictFTOverUnder] mu=230.29 (TEAM_SUMQTR)
+10:29:14	Info	[predictFTOverUnder] ⛔ SKIP: edge_below_threshold | line=231(ftBookLine) | ev=-0.0062 | edge=-0.0033 | conf=52% | 11ms
+10:29:14	Info	[detectRobbers] ════════════════════════════════════════════════════════════
+10:29:14	Info	[detectRobbers] Match: Utah Jazz vs Charlotte Hornets
+10:29:14	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:14	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.51
+10:29:14	Info	[detectRobbers] Resolved odds: home=0, away=0 (direct)
+10:29:14	Info	[detectRobbers] WARNING: Odds not available — using prediction-based fallback (winner/loser mode)
+10:29:14	Info	[detectRobbers] EXIT: Cannot determine sides — no odds and no prediction data
+10:29:14	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:14	Info	[predictFirstHalf1x2] ENTER: Utah Jazz vs Charlotte Hornets
+10:29:14	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.338 (raw=3.38)
+10:29:14	Info	[predictFirstHalf1x2] Signal[FORM]: 0.067
+10:29:14	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:14	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.51
+10:29:14	Info	[predictFirstHalf1x2] Combined signal: 0.2752 (signals=2, totalWeight=0.65)
+10:29:14	Info	[getTierObject] ENTER: confPct=67.7 → pct=68
+10:29:14	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:29:14	Info	[predictFirstHalf1x2] RESULT: Home (Utah Jazz)
+10:29:14	Info	[predictFirstHalf1x2]   Margin: 3.4 | Conf: 67.7%
+10:29:14	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:14	Info	[getTierObject] ENTER: confPct=55.00000000000001 → pct=55
+10:29:14	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:29:15	Info	[getTierObject] ENTER: confPct=41.6 → pct=42
+10:29:15	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:15	Info	[buildAccumulator] FT O/U: Got line 236 from UpcomingClean for Utah Jazz vs Charlotte Hornets
+10:29:15	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Utah Jazz vs Charlotte Hornets
+10:29:15	Info	[_enh_parseBookLine] Parsing: "236"
+10:29:15	Info	[_enh_parseBookLine] Parsed: 236
+10:29:15	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:15	Info	[predictFTOverUnder] mu=237.59 (TEAM_SUMQTR)
+10:29:15	Info	[calibrateConfidence:INFO] ENTRY picks=1 opts={}
+10:29:15	Info	[calibrateConfidence:WARN] Only 1 picks - need at least 5 for calibration (pass-through mode)
+10:29:15	Info	[predictFTOverUnder] ✅ Over 236.0 ○ (55%) | ev=0.0417 edge=0.0218 musrc=TEAM_SUMQTR lpSrc=USER_OVERRIDE [11ms]
+10:29:15	Info	[detectRobbers] ════════════════════════════════════════════════════════════
+10:29:15	Info	[detectRobbers] Match: Boston Celtics vs San Antonio Spurs
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=2.01
+10:29:15	Info	[detectRobbers] Resolved odds: home=0, away=0 (direct)
+10:29:15	Info	[detectRobbers] WARNING: Odds not available — using prediction-based fallback (winner/loser mode)
+10:29:15	Info	[detectRobbers] EXIT: Cannot determine sides — no odds and no prediction data
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[predictFirstHalf1x2] ENTER: Boston Celtics vs San Antonio Spurs
+10:29:15	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.245 (raw=2.45)
+10:29:15	Info	[predictFirstHalf1x2] Signal[FORM]: -0.08
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=2.01
+10:29:15	Info	[predictFirstHalf1x2] Combined signal: 0.1699 (signals=2, totalWeight=0.65)
+10:29:15	Info	[getTierObject] ENTER: confPct=61.4 → pct=61
+10:29:15	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:29:15	Info	[predictFirstHalf1x2] RESULT: Home (Boston Celtics)
+10:29:15	Info	[predictFirstHalf1x2]   Margin: 2.4 | Conf: 61.4%
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[getTierObject] ENTER: confPct=40 → pct=40
+10:29:15	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:15	Info	[HQ GATE] SKIP: Tie skipped (hq_skip_ties=true)
+10:29:15	Info	[buildAccumulator] FT O/U: Got line 228 from UpcomingClean for Boston Celtics vs San Antonio Spurs
+10:29:15	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Boston Celtics vs San Antonio Spurs
+10:29:15	Info	[_enh_parseBookLine] Parsing: "228"
+10:29:15	Info	[_enh_parseBookLine] Parsed: 228
+10:29:15	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:15	Info	[predictFTOverUnder] mu=228.97 (TEAM_SUMQTR)
+10:29:15	Info	[predictFTOverUnder] ⛔ SKIP: edge_below_threshold | line=228(ftBookLine) | ev=-0.0036 | edge=-0.0019 | conf=52% | 7ms
+10:29:15	Info	[detectRobbers] ════════════════════════════════════════════════════════════
+10:29:15	Info	[detectRobbers] Match: Chicago Bulls vs Dallas Mavericks
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.69
+10:29:15	Info	[detectRobbers] Resolved odds: home=0, away=0 (direct)
+10:29:15	Info	[detectRobbers] WARNING: Odds not available — using prediction-based fallback (winner/loser mode)
+10:29:15	Info	[detectRobbers] EXIT: Cannot determine sides — no odds and no prediction data
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[predictFirstHalf1x2] ENTER: Chicago Bulls vs Dallas Mavericks
+10:29:15	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.292 (raw=2.92)
+10:29:15	Info	[predictFirstHalf1x2] Signal[FORM]: 0.1
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.69
+10:29:15	Info	[predictFirstHalf1x2] Combined signal: 0.2479 (signals=2, totalWeight=0.65)
+10:29:15	Info	[getTierObject] ENTER: confPct=66.2 → pct=66
+10:29:15	Info	[getTierObject] EXIT: tier=MEDIUM, weight=0.65
+10:29:15	Info	[predictFirstHalf1x2] RESULT: Home (Chicago Bulls)
+10:29:15	Info	[predictFirstHalf1x2]   Margin: 2.9 | Conf: 66.2%
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[getTierObject] ENTER: confPct=40 → pct=40
+10:29:15	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:15	Info	[buildAccumulator] FT O/U: Got line 235 from UpcomingClean for Chicago Bulls vs Dallas Mavericks
+10:29:15	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Chicago Bulls vs Dallas Mavericks
+10:29:15	Info	[_enh_parseBookLine] Parsing: "235"
+10:29:15	Info	[_enh_parseBookLine] Parsed: 235
+10:29:15	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:15	Info	[predictFTOverUnder] mu=229.18 (TEAM_SUMQTR)
+10:29:15	Info	[calibrateConfidence:INFO] ENTRY picks=1 opts={}
+10:29:15	Info	[calibrateConfidence:WARN] Only 1 picks - need at least 5 for calibration (pass-through mode)
+10:29:15	Info	[predictFTOverUnder] ✅ Under 235.0 ● (58%) | ev=0.0956 edge=0.0501 musrc=TEAM_SUMQTR lpSrc=USER_OVERRIDE [8ms]
+10:29:15	Info	[detectRobbers] ════════════════════════════════════════════════════════════
+10:29:15	Info	[detectRobbers] Match: Detroit Pistons vs Los Angeles Clippers
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.44
+10:29:15	Info	[detectRobbers] Resolved odds: home=0, away=0 (direct)
+10:29:15	Info	[detectRobbers] WARNING: Odds not available — using prediction-based fallback (winner/loser mode)
+10:29:15	Info	[detectRobbers] EXIT: Cannot determine sides — no odds and no prediction data
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[predictFirstHalf1x2] ENTER: Detroit Pistons vs Los Angeles Clippers
+10:29:15	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.35 (raw=3.5)
+10:29:15	Info	[predictFirstHalf1x2] Signal[FORM]: 0.286
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=1.44
+10:29:15	Info	[predictFirstHalf1x2] Combined signal: 0.3352 (signals=2, totalWeight=0.65)
+10:29:15	Info	[getTierObject] ENTER: confPct=70.9 → pct=71
+10:29:15	Info	[getTierObject] EXIT: tier=STRONG, weight=0.85
+10:29:15	Info	[predictFirstHalf1x2] RESULT: Home (Detroit Pistons)
+10:29:15	Info	[predictFirstHalf1x2]   Margin: 3.5 | Conf: 70.9%
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[getTierObject] ENTER: confPct=40 → pct=40
+10:29:15	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:15	Info	[buildAccumulator] FT O/U: Got line 221 from UpcomingClean for Detroit Pistons vs Los Angeles Clippers
+10:29:15	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Detroit Pistons vs Los Angeles Clippers
+10:29:15	Info	[_enh_parseBookLine] Parsing: "221"
+10:29:15	Info	[_enh_parseBookLine] Parsed: 221
+10:29:15	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:15	Info	[predictFTOverUnder] mu=226.26 (TEAM_SUMQTR)
+10:29:15	Info	[calibrateConfidence:INFO] ENTRY picks=1 opts={}
+10:29:15	Info	[calibrateConfidence:WARN] Only 1 picks - need at least 5 for calibration (pass-through mode)
+10:29:15	Info	[predictFTOverUnder] ✅ Over 221.0 ● (59%) | ev=0.1175 edge=0.0615 musrc=TEAM_SUMQTR lpSrc=USER_OVERRIDE [8ms]
+10:29:15	Info	[detectRobbers] ════════════════════════════════════════════════════════════
+10:29:15	Info	[detectRobbers] Match: Indiana Pacers vs Miami Heat
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=3.42
+10:29:15	Info	[detectRobbers] Resolved odds: home=0, away=0 (direct)
+10:29:15	Info	[detectRobbers] WARNING: Odds not available — using prediction-based fallback (winner/loser mode)
+10:29:15	Info	[detectRobbers] EXIT: Cannot determine sides — no odds and no prediction data
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[predictFirstHalf1x2] ENTER: Indiana Pacers vs Miami Heat
+10:29:15	Info	[predictFirstHalf1x2] Signal[MARGIN]: 0.013 (raw=0.13)
+10:29:15	Info	[predictFirstHalf1x2] Signal[FORM]: 0.029
+10:29:15	Info	[_robbers_resolveOdds_] Direct: home=0, away=0
+10:29:15	Info	[_robbers_resolveOdds_] Pred parse: predRaw="RISKY" → pick=0, pickOdds=3.42
+10:29:15	Info	[predictFirstHalf1x2] Combined signal: 0.0167 (signals=2, totalWeight=0.65)
+10:29:15	Info	[getTierObject] ENTER: confPct=51.2 → pct=51
+10:29:15	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:29:15	Info	[predictFirstHalf1x2] RESULT: Home (Indiana Pacers)
+10:29:15	Info	[predictFirstHalf1x2]   Margin: 0.1 | Conf: 51.2%
+10:29:15	Info	[predictFirstHalf1x2] ════════════════════════════════════════════════════════════
+10:29:15	Info	[getTierObject] ENTER: confPct=40.6 → pct=41
+10:29:15	Info	[getTierObject] EXIT: tier=SKIP, weight=0
+10:29:15	Info	[buildAccumulator] FT O/U: Got line 226 from UpcomingClean for Indiana Pacers vs Miami Heat
+10:29:15	Info	[predictFTOverUnder] ▶ FT O/U v6.4.0: Indiana Pacers vs Miami Heat
+10:29:15	Info	[_enh_parseBookLine] Parsing: "226"
+10:29:15	Info	[_enh_parseBookLine] Parsed: 226
+10:29:15	Info	[predictFTOverUnder] League prior: USER_OVERRIDE mu=229.9 sigma=17.5
+10:29:15	Info	[predictFTOverUnder] mu=225.58 (TEAM_SUMQTR)
+10:29:15	Info	[calibrateConfidence:INFO] ENTRY picks=1 opts={}
+10:29:15	Info	[calibrateConfidence:WARN] Only 1 picks - need at least 5 for calibration (pass-through mode)
+10:29:15	Info	[predictFTOverUnder] ✅ Under 226.0 ● (58%) | ev=0.0951 edge=0.0498 musrc=TEAM_SUMQTR lpSrc=USER_OVERRIDE [8ms]
+10:29:15	Info	───────────────────────────────────────────────────────────────
+10:29:15	Info	[buildAccumulator] DIAGNOSTICS:
+10:29:15	Info	[buildAccumulator]   Games processed: 7
+10:29:15	Info	[buildAccumulator]   ROBBERS: 1/7
+10:29:15	Info	[buildAccumulator]   FIRST HALF: 6/7
+10:29:15	Info	[buildAccumulator]   HIGHEST Q: 5/7 (sanitized=0, skipped=0, gated=2)
+10:29:15	Info	[buildAccumulator]   HQ DOMINANT: found=0, used=0, boostedOU=0, boostedOU_DIR=0
+10:29:15	Info	[buildAccumulator]   FT O/U: 4/7 (skipped=3, noLine=0, noForebet=0, errors=0)
+10:29:15	Info	[buildAccumulator]   FT O/U μ-sources: TEAM_SUMQTR=4
+10:29:15	Info	[buildAccumulator]   OU candidates: 0 | OU_DIR: 0
+10:29:15	Info	───────────────────────────────────────────────────────────────
+10:29:15	Info	[getTierObject] ENTER: confPct=54 → pct=54
+10:29:15	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:29:15	Info	[getTierObject] ENTER: confPct=55.00000000000001 → pct=55
+10:29:15	Info	[getTierObject] EXIT: tier=WEAK, weight=0.45
+10:29:15	Info	[_selectSnipers] 7 candidates → 2 snipers (HQ: 0) | HQ(minConf=55, enabled=true)
+10:29:15	Info	[buildAccumulator] FINAL PICKS: Bankers=1, Snipers=2, Robbers=1, 1H=6, FT_OU=4
+10:29:16	Info	[loadTier1Config] ✓ Loaded config version: v_elite_20260315_1128 | Confidence: [50-95] | Modules: FH=true, ROB=true, FTOU=true, EHQ=true
+10:29:30	Info	[_writeBetSlipsEnhanced] Bet_Slips appended from row 1: 35 rows, 14 picks, slipSeq=14
+10:29:30	Info	═══════════════════════════════════════════════════════════════
+10:29:30	Info	  ACCUMULATOR COMPLETE: Bankers: 1, Snipers: 2, Robbers: 1, 1H: 6, FT O/U: 4
+10:29:30	Info	═══════════════════════════════════════════════════════════════
+10:29:30	Info	[PHASE 3 COMPLETE] Accumulator canonicalizeConfig + validateConfigState_ + Bet_Slips 23-col
+10:29:31	Info	[MG_FIX] UpcomingClean repair mode=POST groups=0 headerWrites=0 cellUpdates=0
+10:29:31	Info	[Shebang] OK  Accumulator via buildAccumulator()
+10:29:33	Info	[loadBetSlipsComplete_] Loaded 0 bet rows
+10:29:33	Info	[generateAccuracyReport] Games loaded: 7
+10:29:33	Info	[generateAccuracyReport] Bet_Slips rows: 0
+10:29:34	Info	[generateAccuracyReport] Complete: 0/0 (0.00%)
+10:29:58	Info	[Shebang] OK  Accuracy Report via generateAccuracyReport()
+10:29:59	Info	Quarter format ► Separate=false  Concat=true  T2=true
+10:29:59	Info	Result map keys (7): 2026-01-11|memphis grizzlies|brooklyn nets ; 2026-01-11|orlando magic|new orleans pelicans ; 2026-01-11|utah jazz|charlotte hornets ; 2026-01-11|boston celtics|san antonio spurs ; 2026-01-11|chicago bulls|dallas mavericks
+10:29:59	Info	Log rows: 196
+10:29:59	Info	Log header map keys: timestamp, config_version, source_sheet, row_index, game_id, date, time, league, home, away, quarter, path, flip_applied, flip_key, raw_margin_preflip, final_margin_postflip, abs_margin, threshold_used, tier, threshold_even, threshold_medium, threshold_strong, base_margin, momentum_swing, variance_penalty, avg_variance, home_momentum, away_momentum, home_variance, away_variance, rank_home, rank_away, prediction_text, confidence, edge_score, prediction_record_id, universal_game_id, timestamp_utc, market, period, pick_code, pick_text, confidence_pct, confidence_prob, tier_code, ev
+10:29:59	Info	Dedup: 196 raw → 28 unique
+10:30:00	Info	buildTier2AccuracyReport v3: Complete. 196 raw → 28 unique. Matched: 28 (exact: 28, fuzzy: 0). Derived: 0 (tier: 0, margin: 0).
+10:30:17	Error	
+Exceeded maximum execution time

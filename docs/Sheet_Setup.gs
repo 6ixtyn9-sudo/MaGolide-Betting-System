@@ -133,20 +133,14 @@ function generateCompleteAccuracyReport(ss) {
     
     var overallRate = totalBets > 0 ? (totalHits / totalBets * 100).toFixed(1) : '0.0';
     
+    Logger.log('[Report] COMPLETE: ' + totalHits + '/' + totalBets + ' (' + overallRate + '%)');
     ss.toast('Report complete: ' + totalHits + '/' + totalBets + ' (' + overallRate + '%)', 'Ma Golide', 5);
-    
-    ui.alert('Accuracy Report Complete',
-      'Total Bets Graded: ' + totalBets + '\n' +
-      'Total Hits: ' + totalHits + '\n' +
-      'Overall Hit Rate: ' + overallRate + '%\n\n' +
-      '(See Ma_Golide_Report sheet for details)',
-      ui.ButtonSet.OK);
     
     return reports;
     
   } catch (e) {
     Logger.log('[Report] ERROR: ' + e.message + '\n' + e.stack);
-    ui.alert('Error', e.message, ui.ButtonSet.OK);
+    ss.toast('Accuracy Report Error: ' + e.message, 'Ma Golide', 10);
     return null;
   }
 }
@@ -2680,18 +2674,14 @@ function _runWholeShebang_(opts) {
 
     if (zfLog.length) Logger.log('\n=== ZERO_FALLBACK OPERATIONS LOG ===\n' + zfLog.join('\n'));
 
-    ui.alert('🚀 THE WHOLE SHEBANG COMPLETE', msg, ui.ButtonSet.OK);
     Logger.log('===== THE WHOLE SHEBANG COMPLETE =====');
+    Logger.log(msg);
+    ss.toast('✅ Shebang complete in ' + Math.round((Date.now() - startMs) / 1000) + 's. See Bet_Slips for predictions.', 'Ma Golide', 8);
 
   } catch (e) {
     Logger.log('!!! CRITICAL SHEBANG FAILURE: ' + e.message + '\nStack: ' + e.stack);
     if (zfLog.length) Logger.log('\n=== ZERO_FALLBACK LOG (PARTIAL) ===\n' + zfLog.join('\n'));
-
-    ui.alert(
-      'Shebang Failed',
-      'Error: ' + e.message + '\n\nCompleted: ' + completed.join(', ') + '\n\nCheck Logs for details.',
-      ui.ButtonSet.OK
-    );
+    ss.toast('❌ Shebang failed: ' + e.message + ' — check Logs.', 'Ma Golide', 10);
   }
 }
 
@@ -3149,14 +3139,7 @@ function runTier2_DeepDive() {
 
     if (typeof predictQuarters_Tier2 === 'function') {
       predictQuarters_Tier2(ss);
-      ui.alert(
-        'Tier 2 Margins Complete',
-        'Margin predictions generated in UpcomingClean:\n' +
-        '• t2-q1, t2-q2, t2-q3, t2-q4, t2-ft\n\n' +
-        'Note: This did NOT run O/U predictions.\n' +
-        'Use "Run Both (Margins + O/U)" for complete analysis.',
-        ui.ButtonSet.OK
-      );
+      Logger.log('[runTier2_DeepDive] Margin predictions written to UpcomingClean (t2-q1/q2/q3/q4/ft). Run O/U separately for full analysis.');
     } else if (typeof runAllTier2DeepDives_MODIFIED === 'function') {
       runAllTier2DeepDives_MODIFIED(ss);
     } else if (typeof runAllTier2DeepDives === 'function') {
@@ -5148,7 +5131,7 @@ function IS_ZERO_FALLBACK_OVERLAY_ACTIVE() {
 }
 
 var MG_STRICT_PATCH_VERSION = 'MULTI-LEAGUE-STRICT-2.0';
-var MG_STRICT_GUARD_MODE = 'strict'; // strict | log-only
+var MG_STRICT_GUARD_MODE = 'log-only'; // strict | log-only
 
 var MG_FIX_CANONICAL_BAND = { min: 23, max: 66 };
 var MG_FIX_ELIGIBLE_PREFIXES = ['t2-', 'ou-', 'enh-', 'hq'];

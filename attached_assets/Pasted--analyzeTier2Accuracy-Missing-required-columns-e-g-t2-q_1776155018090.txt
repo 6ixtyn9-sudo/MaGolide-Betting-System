@@ -1,0 +1,114 @@
+...analyzeTier2Accuracy: Missing required columns (e.g., "t2-q1" or "q1"). Skipping analysis.
+
+08:04:45 Info Stack: Error: MG_ZF_STRICT_BLOCKED [safeNum_] unlabelled raw=undefined fallback=0
+at g.<computed> (Sheet_Setup.gs:5498:19)
+at calculateMaGolideScore (Forecaster.gs:2122:48)
+at Object.analyzeTier1 (Forecaster.gs:2488:25)
+at g.<computed> [as fn] (Sheet_Setup.gs:6739:22)
+at callResolved (Sheet_Setup.gs:2517:29)
+at runGuardedStage (Sheet_Setup.gs:2570:7)
+at runWholeShebang (Sheet_Setup.gs:2609:5)
+at runTheWholeShebang (Sheet_Setup.gs:2436:10)
+at g.<computed> (Sheet_Setup.gs:6723:22)
+at GS_INTERNAL_top_function_call.gs:1:8
+
+	[validateConfigState_] Missing required config field: version
+    all the bets are not being processed?
+
+
+Show less
+2 hours ago
+
+Planning issue resolution strategy (14 seconds)
+Three separate bugs here. Let me read the relevant code sections simultaneously:
+
+
+Show less
+
+Ran rg
+
+Opened docs/Forecaster.gs
+
+Ran rg
+
+Analyzing bet slip parsing failure (17 seconds)
+Let me read the key sections to understand all three bugs:
+
+
+Show less
+
+Opened docs/Margin_Analyzer.gs
+
+Opened docs/Forecaster.gs
+
+Opened docs/Margin_Analyzer.gs
+
+Analyzing configuration validation logic (18 seconds)
+Let me read the Bet_Slips parsing section and the safeNum_ / cfgNum helper:
+
+
+Show less
+
+Opened docs/Margin_Analyzer.gs
+
+Ran rg
+
+Planning issue resolution strategy (8 seconds)
+Let me read the _cfgNum_ helper and the bet slips loader:
+
+
+Show less
+
+Opened docs/Forecaster.gs
+
+Ran rg
+
+Opened docs/Contract_Enforcer.gs
+
+Planning function conflict resolution (23 seconds)
+Let me read the bet slips loader and the config defaults that provide version/config_version:
+
+
+Show less
+
+Opened docs/Margin_Analyzer.gs
+
+Opened docs/Data_Parser.gs
+
+Planning data parsing logic improvements (14 seconds)
+Let me check buildHeaderMap_ and gradeSniperMargin_ to understand the 0-bets problem:
+
+
+Show less
+
+Ran rg
+
+Ran rg
+
+Analyzing code logic for header
+
+Opened docs/Margin_Analyzer.gs
+
+Opened docs/Margin_Analyzer.gs
+
+Opened docs/Margin_Analyzer.gs
+
+Analyzing Bet_Slips sheet parsing logic (54 seconds)
+Let me check the Bet_Slips schema and the Contract_Enforcement.gs structure:
+
+
+Show less
+
+Ran rg
+
+Ran rg
+
+Planning Bet_Slips data parsing improvements (36 seconds)
+Let me read the Bet_Slips write contract and the type detection in loadBetSlipsComplete_:
+
+
+Show less
+
+Opened docs/Contract_Enforcement.gs
+
+Opened docs/Margin_Analyzer.gs
