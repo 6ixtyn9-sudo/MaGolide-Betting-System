@@ -3355,7 +3355,8 @@ function loadBetSlipsComplete_(ss) {
       odds:       getColValue_(row, currentHMap, ['odds', 'price']),
       confidence: getColValue_(row, currentHMap, ['confidence', 'conf', 'confidence_pct', 'confidencepct']),
       ev:         getColValue_(row, currentHMap, ['ev', 'expectedvalue']),
-      tier:       getColValue_(row, currentHMap, ['tier', 'tier_code', 'tiercode'])
+      tier:       getColValue_(row, currentHMap, ['tier', 'tier_code', 'tiercode']),
+      period:     getColValue_(row, currentHMap, ['period', 'half', 'qtr', 'quarter'])
     };
     
     result.rows.push(rowData);
@@ -3490,10 +3491,15 @@ function gradeSniperOU_(betSlipsData, games) {
     details: []
   };
   
-  // Filter for quarter O/U bets (supports 23-col Market = SNIPER_OU and legacy Type)
+  // Filter for quarter O/U bets (supports 23-col Market = SNIPER_OU/SNIPER and legacy Type)
   var ouBets = betSlipsData.rows.filter(function(row) {
     var typeU = String(row.type || '').toUpperCase();
     if (typeU === 'SNIPER_OU') return /Q[1-4]/i.test(row.pick || '');
+    // 23-col format: Market='SNIPER', Period='Q1'-'Q4' → quarter O/U
+    if (typeU === 'SNIPER') {
+      var period = String(row.period || '').toUpperCase();
+      if (/^Q[1-4]$/.test(period)) return true;
+    }
     if (typeU === 'SNIPER_MARGIN' || typeU === 'FT_OU' || typeU === 'BANKER' ||
         typeU === 'ROBBER' || typeU === 'FIRST_HALF_1X2') return false;
     var combined = (typeU + ' ' + String(row.section || '').toUpperCase() + ' ' + String(row.pick || '').toUpperCase());
@@ -3515,11 +3521,30 @@ function gradeSniperOU_(betSlipsData, games) {
     var qMatch = pickUpper.match(/Q([1-4])/);
     var dirMatch = pickUpper.match(/(OVER|UNDER|O|U)\s*(\d+\.?\d*)/);
     
-    if (!qMatch || !dirMatch) return;
+    // Fallback: period in separate column, direction/line in 23-col structured columns
+    if (!qMatch) {
+      var prd = String(bet.period || '').toUpperCase();
+      if (/^Q[1-4]$/.test(prd)) qMatch = [prd, prd[1]];
+    }
     
-    var quarter = 'Q' + qMatch[1];
-    var direction = dirMatch[1] === 'O' ? 'OVER' : dirMatch[1] === 'U' ? 'UNDER' : dirMatch[1];
-    var line = parseFloat(dirMatch[2]);
+    var quarter, direction, line;
+    if (qMatch) quarter = 'Q' + qMatch[1];
+    if (dirMatch) {
+      direction = dirMatch[1] === 'O' ? 'OVER' : dirMatch[1] === 'U' ? 'UNDER' : dirMatch[1];
+      line = parseFloat(dirMatch[2]);
+    } else {
+      // 23-col fallback: selection_side = 'OVER'/'UNDER', selection_line = numeric
+      var selSide = String(getColValue_(bet.rawRow, bet.headerMap,
+          ['selection_side', 'selectionside', 'side', 'dir']) || '').toUpperCase();
+      var selLine = parseFloat(getColValue_(bet.rawRow, bet.headerMap,
+          ['selection_line', 'selectionline', 'line']) || '');
+      if (selSide && isFinite(selLine)) {
+        direction = selSide;
+        line = selLine;
+      }
+    }
+    
+    if (!quarter || !direction || !isFinite(line)) return;
     
     var qScore = game.qScores[quarter];
     if (!qScore) return;
@@ -3666,12 +3691,14 @@ function gradeRobbers_(betSlipsData, games) {
     
     result.matched++;
     
-    var pickText = bet.pick + ' ' + findWinnerInRow_(bet.rawRow, bet.headerMap, game);
-    var predicted = 'AWAY'; // Robbers typically pick underdogs
-    
-    if (pickText.toLowerCase().indexOf(game.home.toLowerCase()) !== -1 ||
-        pickText.indexOf('Home') !== -1) {
+    var pickRaw = String(bet.pick || '').toLowerCase();
+    var predicted;
+    if (pickRaw && game.home && pickRaw.indexOf(game.home.toLowerCase()) !== -1) {
       predicted = 'HOME';
+    } else if (pickRaw && game.away && pickRaw.indexOf(game.away.toLowerCase()) !== -1) {
+      predicted = 'AWAY';
+    } else {
+      predicted = 'AWAY'; // ROBBER default: picks underdog (away)
     }
     
     var outcome = predicted === game.ftWinner ? 'HIT' : 'MISS';
