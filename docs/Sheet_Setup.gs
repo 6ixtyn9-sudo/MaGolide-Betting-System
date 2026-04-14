@@ -6190,7 +6190,6 @@ function _selectSnipers(candidates, config, tierCuts) {
   // Helpers (safe even if some project helpers are missing)
   // ───────────────────────────────────────────────
   function toNum_(v, d) {
-    // prefer project numeric sanitizer if present
     try {
       if (typeof mg_fix_realNum_ === 'function') {
         var nn = mg_fix_realNum_(v);
@@ -6227,7 +6226,6 @@ function _selectSnipers(candidates, config, tierCuts) {
   }
 
   function getTier_(conf) {
-    // prefer existing tier system
     if (typeof _m8_getTier_ === 'function') return _m8_getTier_(conf, tierCuts);
     if (typeof getTierObject === 'function') {
       var t = getTierObject(conf);
@@ -6252,7 +6250,6 @@ function _selectSnipers(candidates, config, tierCuts) {
 
   var preferStrong = (config.preferStrongTier !== false);
 
-  // HQ controls
   var hqEnabled = toBool_(config.hqEnabled,
                   toBool_(config.hq_enabled,
                     toBool_(config.includeHighestQuarter, true)));
@@ -6272,25 +6269,17 @@ function _selectSnipers(candidates, config, tierCuts) {
 
     var matchKey = normMatch_(c.match);
 
-    // ─────────────────────────────────────────────
-    // HIGH_QTR (gated)
-    // ─────────────────────────────────────────────
-    if (c.signalType === 'HIGH_QTR') {
+    // ═══════════════════════════════════════════════════════════
+    // HIGH_QTR: bypass all further filters — picks that reached
+    // this stage already passed the upstream hq_gateCheck_.
+    // Only the hqEnabled flag and the hqMinConf floor are checked.
+    // ═══════════════════════════════════════════════════════════
+    if (c.signalType === 'HIGH_QTR' || c.isHighQtr === true) {
       if (!hqEnabled) continue;
 
       var hqConf = toNum_(c.confidence, NaN);
-      if (!isFinite(hqConf)) continue;
+      if (!isFinite(hqConf) || hqConf < hqMinConf) continue;
 
-      // hard confidence floor
-      if (hqConf < hqMinConf) continue;
-
-      // run HQ gate defensively (uses pWin/rel/tie/etc if present)
-      if (typeof hq_gateCheck_ === 'function') {
-        var gate = hq_gateCheck_(c, config);
-        if (!gate || gate.pass !== true) continue;
-      }
-
-      // suppress SKIP tier explicitly
       var hqTierObj = (typeof getTierObject === 'function') ? getTierObject(hqConf) : null;
       if (hqTierObj && String(hqTierObj.tier || '').toUpperCase() === 'SKIP') continue;
 
@@ -6315,9 +6304,9 @@ function _selectSnipers(candidates, config, tierCuts) {
       continue;
     }
 
-    // ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
     // MARGIN
-    // ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
     if (c.signalType === 'MARGIN') {
       var mm = String(c.pick || '').match(/[+-]([\d.]+)/);
       if (!mm) continue;
@@ -6325,7 +6314,7 @@ function _selectSnipers(candidates, config, tierCuts) {
       var margin = toNum_(mm[1], NaN);
       if (!isFinite(margin) || margin < minMargin) continue;
 
-      var tierM = getTier_(toNum_(c.confidence, 0));
+      var tierM  = getTier_(toNum_(c.confidence, 0));
       var bonusM = preferStrong ? tierBonus_(c.gameTier) : 0;
 
       snipers.push({
@@ -6346,27 +6335,25 @@ function _selectSnipers(candidates, config, tierCuts) {
       continue;
     }
 
-    // ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
     // O/U (OU, OU_STAR, OU_DIR, OU_HQ, OU_DIR_HQ)
-    // ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
     if (c.signalType === 'OU' || c.signalType === 'OU_STAR' || c.signalType === 'OU_DIR' ||
         c.signalType === 'OU_HQ' || c.signalType === 'OU_DIR_HQ') {
       var conf = toNum_(c.confidence, NaN);
       var ev   = toNum_(c.ev, NaN);
       var edge = toNum_(c.edge, NaN);
 
-      // Gate: must meet conf OR EV threshold (treat NaN as 0)
       var confVal = isFinite(conf) ? conf : 0;
       var evVal   = isFinite(ev)   ? ev   : 0;
 
+      // Must meet conf OR EV threshold
       if (confVal < minConf && evVal < minEV) continue;
 
       // Edge gating
       if (minEdge > 0) {
         if (isFinite(edge)) {
-          // if edge is explicitly provided and below minEdge, reject
           if (edge < minEdge && edge !== 0) continue;
-          // edge==0 means "unknown/flat" in your pipeline sometimes; then rely on EV
           if (edge === 0 && evVal < minEV) continue;
         } else {
           if (evVal < minEV) continue;
@@ -6379,12 +6366,12 @@ function _selectSnipers(candidates, config, tierCuts) {
       addedOUPicks[normKey] = true;
 
       var typeLabel = 'SNIPER O/U';
-      var priority = 3;
+      var priority  = 3;
       if (c.star) { typeLabel = 'SNIPER O/U STAR'; priority = 1; }
       else if (c.signalType === 'OU_DIR' || c.signalType === 'OU_DIR_HQ') { typeLabel = 'SNIPER O/U DIR'; priority = 2; }
       else if (c.signalType === 'OU_HQ') { typeLabel = 'SNIPER O/U'; priority = 3; }
 
-      var tierOU = getTier_(confVal);
+      var tierOU  = getTier_(confVal);
       var bonusOU = preferStrong ? tierBonus_(c.gameTier) : 0;
 
       snipers.push({

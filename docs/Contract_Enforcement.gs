@@ -2504,6 +2504,69 @@ function buildAccumulator(ss) {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // QUARTER BOOK LINE LOOKUP FROM UPCOMINGCLEAN
+  // Reads Q1-Q4 columns (actual book lines, e.g. 58.5) so OU candidates use
+  // the real spread rather than the predicted line from OU_Log.
+  // ═══════════════════════════════════════════════════════════════════════════
+  var _ucQuarterLineCache = null;
+
+  function _loadUpcomingCleanQuarterLines() {
+    if (_ucQuarterLineCache !== null) return _ucQuarterLineCache;
+
+    _ucQuarterLineCache = {};
+    var ucSheet = ss.getSheetByName('UpcomingClean');
+    if (!ucSheet) {
+      log('UpcomingClean not found — cannot load quarter book lines');
+      return _ucQuarterLineCache;
+    }
+
+    var ucData = ucSheet.getDataRange().getValues();
+    if (ucData.length < 2) return _ucQuarterLineCache;
+
+    var ucMap = {};
+    for (var i = 0; i < ucData[0].length; i++) {
+      var h = String(ucData[0][i] || '').toLowerCase().trim().replace(/[\s_]+/g, '_');
+      ucMap[h] = i;
+      var raw = String(ucData[0][i] || '').toLowerCase().trim();
+      if (raw !== h) ucMap[raw] = i;
+    }
+
+    var homeIdx = ucMap['home'];
+    var awayIdx = ucMap['away'];
+    var q1Idx   = ucMap['q1'];
+    var q2Idx   = ucMap['q2'];
+    var q3Idx   = ucMap['q3'];
+    var q4Idx   = ucMap['q4'];
+
+    for (var r = 1; r < ucData.length; r++) {
+      var ucRow  = ucData[r];
+      var ucHome = String(ucRow[homeIdx] || '').trim().toLowerCase();
+      var ucAway = String(ucRow[awayIdx] || '').trim().toLowerCase();
+      if (!ucHome || !ucAway) continue;
+
+      var key = ucHome + ' vs ' + ucAway;
+      _ucQuarterLineCache[key] = {
+        Q1: q1Idx !== undefined ? parseFloat(ucRow[q1Idx]) : NaN,
+        Q2: q2Idx !== undefined ? parseFloat(ucRow[q2Idx]) : NaN,
+        Q3: q3Idx !== undefined ? parseFloat(ucRow[q3Idx]) : NaN,
+        Q4: q4Idx !== undefined ? parseFloat(ucRow[q4Idx]) : NaN
+      };
+    }
+
+    log('Loaded quarter book lines for ' + Object.keys(_ucQuarterLineCache).length + ' games from UpcomingClean');
+    return _ucQuarterLineCache;
+  }
+
+  function _getQuarterLineFromUpcomingClean(homeTeam, awayTeam, quarter) {
+    var cache = _loadUpcomingCleanQuarterLines();
+    var key   = (homeTeam + ' vs ' + awayTeam).toLowerCase();
+    var lines  = cache[key];
+    if (!lines) return null;
+    var val = lines[quarter];
+    return (isFinite(val) && val > 0) ? val : null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // enh-high-q COLUMN READER FROM UPCOMINGCLEAN (Patch 4B support)
   // Reads the enhancement columns so HQ gate has enriched data
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3068,7 +3131,13 @@ function _getEnhHighQ(ss, homeTeam, awayTeam) {
           var ouSig = t2.ou[oq];
           if (!ouSig) continue;
 
-          var pickOU = _canonicalQOUPick_(oq, ouSig.direction, ouSig.line);
+          // Use actual book line from UpcomingClean Q1-Q4 columns if available,
+          // falling back to the predicted line from OU_Log or the attached bookLine.
+          var bookLine = _getQuarterLineFromUpcomingClean(home, away, oq)
+                      || (ouSig.bookLine && isFinite(ouSig.bookLine) && ouSig.bookLine > 0 ? ouSig.bookLine : null);
+          var lineToUse = bookLine || ouSig.line;
+
+          var pickOU = _canonicalQOUPick_(oq, ouSig.direction, lineToUse);
           if (!pickOU) continue;
 
           diag.ouCandidates++;
