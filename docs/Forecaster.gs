@@ -2074,17 +2074,23 @@ function calculateMaGolideScore(features, config) {
   var forebetDiff = safeNum_(features.forebetDiff, 0);
   var variancePenalty = safeNum_(features.variancePenalty, 0);
 
-  // Get weights
-  var pctWeight = (config.pctWeight !== undefined && config.pctWeight !== null) ? safeNum_(config.pctWeight, safeNum_(config.pct_weight, 0)) : 0;
-  var netRtgWeight = (config.netRtgWeight !== undefined && config.netRtgWeight !== null) ? safeNum_(config.netRtgWeight, safeNum_(config.net_rtg_weight, 0)) : 0;
-  var homeCourtWeight = (config.homeCourtWeight !== undefined && config.homeCourtWeight !== null) ? safeNum_(config.homeCourtWeight, safeNum_(config.home_court_weight, 0)) : 0;
-  var momentumWeight = (config.momentumWeight !== undefined && config.momentumWeight !== null) ? safeNum_(config.momentumWeight, safeNum_(config.momentum_weight, 0)) : 0;
-  var streakWeight = (config.streakWeight !== undefined && config.streakWeight !== null) ? safeNum_(config.streakWeight, safeNum_(config.streak_weight, 0)) : 0;
-  var rankWeight = (config.rank !== undefined && config.rank !== null) ? safeNum_(config.rank, safeNum_(config.rankWeight, 0)) : 0;
-  var formWeight = (config.form !== undefined && config.form !== null) ? safeNum_(config.form, safeNum_(config.formWeight, 0)) : 0;
-  var h2hWeight = (config.h2h !== undefined && config.h2h !== null) ? safeNum_(config.h2h, safeNum_(config.h2hWeight, 0)) : 0;
-  var forebetWeight = (config.forebet !== undefined && config.forebet !== null) ? safeNum_(config.forebet, safeNum_(config.forebetWeight, 0)) : 0;
-  var varianceWeight = (config.variance !== undefined && config.variance !== null) ? safeNum_(config.variance, safeNum_(config.varianceWeight, 0)) : 0;
+  // Get weights — avoid nested safeNum_ calls with potentially undefined snake_case aliases
+  function _cfgNum_(primary, fallback) {
+    var v = (primary !== undefined && primary !== null) ? Number(primary) : NaN;
+    if (!isNaN(v) && isFinite(v)) return v;
+    var f = (fallback !== undefined && fallback !== null) ? Number(fallback) : NaN;
+    return (!isNaN(f) && isFinite(f)) ? f : 0;
+  }
+  var pctWeight = _cfgNum_(config.pctWeight, config.pct_weight);
+  var netRtgWeight = _cfgNum_(config.netRtgWeight, config.net_rtg_weight);
+  var homeCourtWeight = _cfgNum_(config.homeCourtWeight, config.home_court_weight);
+  var momentumWeight = _cfgNum_(config.momentumWeight, config.momentum_weight);
+  var streakWeight = _cfgNum_(config.streakWeight, config.streak_weight);
+  var rankWeight = _cfgNum_(config.rank, config.rankWeight);
+  var formWeight = _cfgNum_(config.form, config.formWeight);
+  var h2hWeight = _cfgNum_(config.h2h, config.h2hWeight);
+  var forebetWeight = _cfgNum_(config.forebet, config.forebetWeight);
+  var varianceWeight = _cfgNum_(config.variance, config.varianceWeight);
 
   // Calculate weighted components
   var weightedRank = rankWeight * rankDiff;
@@ -5687,12 +5693,15 @@ function validateConfigState_(config, tier) {
   
   try {
     // Basic validation for all tiers
-    var required = ['version', 'LAST_UPDATED'];
-    for (var i = 0; i < required.length; i++) {
-      if (!config[required[i]]) {
-        Logger.log('[validateConfigState_] Missing required config field: ' + required[i]);
-        return false;
-      }
+    // Check 'version' accepting both lowercase and uppercase forms
+    if (!config['version'] && !config['VERSION']) {
+      Logger.log('[validateConfigState_] Missing required config field: version');
+      return false;
+    }
+    // Check 'LAST_UPDATED' accepting both forms (sheet stores as last_updated lowercase)
+    if (!config['LAST_UPDATED'] && !config['last_updated']) {
+      Logger.log('[validateConfigState_] Missing required config field: LAST_UPDATED');
+      return false;
     }
     
     // Tier-specific validation
@@ -5786,4 +5795,3 @@ function validateAccumulatorConfig_(config) {
   
   return true;
 }
-
