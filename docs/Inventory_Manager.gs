@@ -4011,6 +4011,8 @@ function writeBestPrediction_(allData, rowIdx, preds, colMap) {
 // ═══════════════════════════════════════════════════════════════════════════════
 var UNIFIED_OU_CONFIG = {
   VERSION: 'v7.0-UNIFIED',
+  version: 'v7.0-UNIFIED',
+  LAST_UPDATED: new Date().toISOString(),
   
   QUARTERS: ['Q1', 'Q2', 'Q3', 'Q4'],
   
@@ -4069,6 +4071,10 @@ var UNIFIED_OU_CONFIG = {
   }
 };
 
+// Module-level OU_CFG so helper functions (_assignTier, _calcEdgeScore, etc.)
+// can reference it as a global. Gets overwritten per-run inside predictQuarters_Tier2_OU.
+var OU_CFG = UNIFIED_OU_CONFIG;
+
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -4111,7 +4117,7 @@ function predictQuarters_Tier2_OU(ss, options) {
     ? options.gameContext
     : ((typeof t2_getSharedGameContext_ === 'function') ? t2_getSharedGameContext_() : null);
 
-  var OU_CFG = (typeof mergeUnifiedOuConfigWithSheet_ === 'function')
+  OU_CFG = (typeof mergeUnifiedOuConfigWithSheet_ === 'function')
     ? mergeUnifiedOuConfigWithSheet_(ss, UNIFIED_OU_CONFIG)
     : UNIFIED_OU_CONFIG;
   if (typeof validateConfigState_ === 'function') {
@@ -6534,8 +6540,13 @@ function applyStrategyStats_(bucket, pred, label) {
  *   - COLS = 14 matching expanded detail header
  */
 function writeAccuracyReport_(ss, eval_) {
-  var sheet = getSheetInsensitive(ss, 'OU_Accuracy') || ss.insertSheet('OU_Accuracy');
-  sheet.clear();
+  // Write O/U accuracy data into the main Accuracy_Report sheet (appended after
+  // the existing content) so everything is consolidated in one place.
+  // A standalone OU_Accuracy sheet is no longer created.
+  var sheet = getSheetInsensitive(ss, 'Accuracy_Report') || ss.insertSheet('Accuracy_Report');
+  // Do NOT clear — we append after whatever generateAccuracyReport already wrote.
+  // Start writing at the next empty row after existing content.
+  var startRow = sheet.getLastRow() + 2; // +2 for a blank separator row
   
   var out = [];
   var now = new Date().toLocaleString();
@@ -6857,13 +6868,13 @@ function writeAccuracyReport_(ss, eval_) {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // WRITE TO SHEET
+  // WRITE TO SHEET (appended to Accuracy_Report after existing content)
   // ─────────────────────────────────────────────────────────────────
-  sheet.getRange(1, 1, out.length, COLS).setValues(out);
+  sheet.getRange(startRow, 1, out.length, COLS).setValues(out);
 
   // Apply formatting (optional - wrapped in try/catch)
   try {
-    sheet.getRange('A1').setFontWeight('bold').setFontSize(14);
+    sheet.getRange(startRow, 1).setFontWeight('bold').setFontSize(12);
     sheet.setColumnWidth(1, 200);
     sheet.setColumnWidth(2, 80);
     sheet.setColumnWidth(3, 120);
@@ -6871,7 +6882,7 @@ function writeAccuracyReport_(ss, eval_) {
   } catch (e) { /* Formatting is optional */ }
 
   // ─────────────────────────────────────────────────────────────────
-  // APPLY CONDITIONAL FORMATTING
+  // APPLY CONDITIONAL FORMATTING (applies to whole sheet data range)
   // ─────────────────────────────────────────────────────────────────
   try {
     var range = sheet.getDataRange();
@@ -6924,12 +6935,12 @@ function writeAccuracyReport_(ss, eval_) {
     );
 
     sheet.setConditionalFormatRules(rules);
-    Logger.log('[Report] Applied color coding to OU_Accuracy');
+    Logger.log('[Report] Applied color coding to Accuracy_Report (O/U section)');
   } catch (e) {
     Logger.log('Error applying colors: ' + e.message);
   }
 
-  Logger.log('[Report] Written to OU_Accuracy: ' + out.length + ' rows');
+  Logger.log('[Report] O/U section written to Accuracy_Report starting at row ' + startRow + ' (' + out.length + ' rows)');
 }
 
 
