@@ -1,0 +1,143 @@
+============================================================
+GOLD UNIVERSE ORCHESTRATOR — SESSION RESUME INSTRUCTIONS
+Generated: 2026-04-15
+============================================================
+
+WHAT HAS BEEN BUILT SO FAR
+----------------------------
+A fully functional Python/Flask web application called the "Gold Universe
+Orchestrator" is running in Replit on port 5000. It connects to hundreds of
+Google Sheets satellite spreadsheets, runs the Ma Assayer purity engine on
+their data, and displays results in a live dark-theme dashboard.
+
+The project contains THREE complete Google Apps Script codebases (stored as
+.gs files, NOT running in Replit — they run inside Google Sheets):
+  1. Ma Golide Satellites (docs/)     — per-league prediction machines
+  2. Ma Assayer (ma_assayer/docs/)    — purity/edge-discovery engine
+  3. Ma Golide Mothership (ma_golide_mothership/doc/) — central brain / acca builder
+
+The Python Orchestrator is the Replit-native version that connects them all.
+
+
+THE ONE THING STILL NEEDED TO MAKE IT LIVE
+--------------------------------------------
+The Google Service Account secret has NOT been set yet.
+
+ACTION REQUIRED:
+  1. Go to console.cloud.google.com
+  2. IAM & Admin → Service Accounts → Create a Service Account
+  3. Create a JSON key for it → download the .json file
+  4. In Replit: Secrets tab → Add secret:
+       Key:   GOOGLE_SERVICE_ACCOUNT_JSON
+       Value: [paste the entire contents of the .json file]
+  5. Share each satellite spreadsheet with the service account email address
+     (it looks like: something@project-name.iam.gserviceaccount.com)
+     OR share the entire Drive folder containing all satellite sheets.
+
+Once the secret is set, the dashboard will show "Google Connected" and all
+Fetch / Assay buttons will be enabled.
+
+
+SATELLITE SHEETS CONTEXT
+--------------------------
+- Satellites are individual Google Sheets, one per league per day.
+- They started appearing from 10 JANUARY 2026 (J10 = January 10).
+- Naming convention: "United States (NBA) J10", "Europe (EuroLeague) J11", etc.
+- Some are LEGACY format (old code, sheets: Predictions, Results, BetSlips).
+- Some are GOLD UNIVERSE format (new code, sheets: Side, Totals, MA_Vault, etc.).
+- The Orchestrator auto-detects which format each satellite uses.
+- Known real-world example: NBA J10 had 26 bets with 57.69% hit rate,
+  strongest markets: BANKER/FT O/U/1H 1X2.
+
+HOW TO ADD SATELLITES TO THE REGISTRY
+---------------------------------------
+Option A — Single add (via dashboard sidebar):
+  - Open the dashboard at port 5000
+  - Fill in: Sheet ID (from the Google Sheets URL), Date, League
+  - Click "Add to Registry"
+
+Option B — Bulk add (via dashboard sidebar JSON box):
+  Paste a JSON array like:
+  [
+    {"sheet_id": "1abc...", "sheet_name": "NBA J10", "date": "2026-01-10", "league": "NBA"},
+    {"sheet_id": "1def...", "sheet_name": "EuroLeague J11", "date": "2026-01-11", "league": "EuroLeague"}
+  ]
+
+Option C — API call:
+  POST /api/satellites/bulk-add
+  Body: {"entries": [...same format as above...]}
+
+
+RUNNING THE ORCHESTRATOR
+--------------------------
+The workflow "Start application" runs: python3 app.py
+Flask serves on 0.0.0.0:5000.
+No build step needed — just restart the workflow if the server stops.
+
+
+WHAT TO BUILD NEXT (PHASE 2 PRIORITIES)
+-----------------------------------------
+1. GOOGLE AUTH — Set the secret (see above). Verify with one test satellite.
+
+2. POPULATE THE REGISTRY — Add all satellite sheet IDs from Jan 10 onwards.
+   You can do this by bulk-adding the JSON array of all your sheet IDs.
+   Group them by date (e.g. all J10 sheets, all J11 sheets, etc.).
+
+3. RUN FIRST BATCH ASSAY — Once auth works and a few satellites are registered:
+   Click "Fetch All Satellites" → wait for completion → "Run Full Assay on All"
+   Each satellite will show its Banker/Robber count and overall win rate.
+
+4. MOTHERSHIP ACCA BUILDER (Phase 2 feature to build):
+   After assay runs, implement a /api/build-accas endpoint that:
+   - Takes all BANKER edges across satellites
+   - Groups by date + confidence tier
+   - Assembles combinations (2-fold, 3-fold accas)
+   - Returns a bet slip preview sorted by EV
+
+5. LEAGUE PURITY DASHBOARD (Phase 2 feature to build):
+   A dedicated /leagues page showing all leagues sorted by win rate,
+   with gold/silver/bronze purity grades and trend over time.
+
+6. LEGACY SHEET SUPPORT (Phase 2 feature to build):
+   Legacy sheets use different column names (Predictions instead of Side).
+   The fetcher currently pulls them but the assayer may not parse all columns.
+   Add a legacy column mapping layer in fetcher/sheet_fetcher.py.
+
+
+FILE LOCATIONS CHEATSHEET
+---------------------------
+app.py                          Main Flask server + all routes
+auth/google_auth.py             Google Service Account auth
+registry/satellite_registry.py Satellite CRUD + registry.json persistence
+fetcher/sheet_fetcher.py        Rate-limited gspread batch fetcher
+assayer/assayer_engine.py       Ma Assayer Python port (Wilson CI, grades, tiers)
+templates/dashboard.html        Full dashboard UI
+orchestrator_backup.py          Single-file backup of all Orchestrator logic
+GOLD_UNIVERSE_STATE.md          Full architecture + Banker/Robber logic reference
+
+
+BANKER vs ROBBER CLASSIFICATION (QUICK REFERENCE)
+---------------------------------------------------
+BANKER  = lower_bound >= 0.60 AND win_rate >= 0.72  (Gold+ grade)
+        OR lower_bound >= 0.55 AND win_rate >= 0.62  (Silver grade)
+ROBBER  = n < 10 (too few samples)
+        OR win_rate < 0.50 (below coinflip — use as fade)
+NEUTRAL = everything else (positive but uncertain)
+
+Minimum lift to qualify as an edge: abs(win_rate - 0.50) >= 0.03
+Wilson z-score: 1.645 (80% one-sided confidence interval)
+Shrinkage prior: alpha=2, beta=2 (Bayes toward 50%)
+
+
+KEY DESIGN RULES (DO NOT CHANGE IN PHASE 1)
+---------------------------------------------
+- Manual control only — no automated triggers
+- No audit logs
+- No automated rollback
+- Rate limit: 1.1 seconds between Google API calls
+- Registry is a flat JSON file (registry/registry.json), no database
+- "Bankers" = safe tier, "Robbers" = risky tier (opposite of bankers)
+
+============================================================
+END OF SESSION RESUME INSTRUCTIONS
+============================================================
