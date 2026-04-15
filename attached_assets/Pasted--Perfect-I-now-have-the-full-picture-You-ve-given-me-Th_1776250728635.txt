@@ -1,0 +1,66 @@
+**✅ Perfect — I now have the full picture.**
+
+You’ve given me:
+- The **complete MA GOLIDE Accuracy Report** (NBA J10 — 26 bets, **57.69%** hit rate, strong in BANKER/FT O/U/1H 1X2).
+- The **full three-repo Gold Universe codebase** (Ma_Assayer + Ma_Golide_Mothership + Ma_Golide_Satellites) in packed `.git.md` format.
+- The **real-world scale**: **hundreds of Google Sheets** (one per league per day, starting 10 January 2026), currently running legacy code but being migrated to the new Gold Universe standard.
+
+---
+
+### Here is the **exact prompt** you can copy-paste into **Replit Agent** (or Replit AI Chat):
+
+```prompt
+You are now the official Replit architect for the **Ma Golide Gold Universe** — the complete production betting prediction system.
+
+I have attached three complete Google Apps Script codebases:
+- Ma_Assayer.git.md (the purity/edge-discovery engine with fuzzy column matching, Wilson CI, Flagger, Tier2_Accuracy, etc.)
+- Ma_Golide_Mothership.git.md (the central brain with MIC Intelligence Core, Assayer Bridge, Acca Engine, HiveMind, Risky Acca Builder, etc.)
+- Ma_Golide_Satellites.git.md (the per-league/per-day satellite sheets with legacy + new Gold Universe code)
+
+**REAL SCALE:**
+- There are **hundreds of Google Sheets** (one satellite per league per day).
+- Sheets started appearing from **10 January 2026**.
+- Each day/league has its own spreadsheet (e.g. "United States (NBA) J10", "Europe (EuroLeague) J11", etc.).
+- Some still run legacy code; others are already upgraded to the new Gold Universe structure (Side + Totals + MA_* sheets).
+
+**YOUR MISSION — Build the Replit "Gold Universe Orchestrator":**
+
+1. **Connect to ALL satellites** using Replit Connectors (Google account login) + gspread fallback with service-account JSON stored in Secrets.
+2. Create a central **Satellite Registry** (JSON or SQLite) that automatically discovers or lets me add hundreds of spreadsheet IDs.
+3. For every satellite:
+   - Detect whether it is legacy or Gold-Universe format.
+   - Pull "Side", "Totals", "ResultsClean", "UpcomingClean", etc.
+   - Run the full **Ma Assayer** logic (or call the Assayer via Apps Script web app if easier).
+   - Feed clean edges + purity grades into the **Mothership**.
+4. Build a **live dashboard** that shows:
+   - Overall Gold Universe accuracy (like the NBA J10 report I just gave you: 57.69% hit rate, per-type breakdowns).
+   - List of all active satellites with last-updated timestamp.
+   - One-click "Run Full Assay on All Satellites" button.
+   - Mothership Acca builder preview.
+5. Make it scalable for 100–500+ sheets without timeouts (use batching, caching, background workers if possible).
+
+Start by:
+- Creating the project structure.
+- Setting up Google Connectors + Secrets placeholders.
+- Writing the Satellite Registry manager.
+- Giving me the first working version that can connect to at least 5 example satellites and run a test assay.
+
+Use the exact code from the three attached .git.md files as the source of truth. Do not simplify the Assayer or Mothership logic — I want full fidelity.
+
+Begin now.
+```
+
+---
+
+**How to use it:**
+1. Open a **new Replit** (Python or Node.js template).
+2. Paste the entire prompt above into the **Replit Agent** chat.
+3. When it asks for the files, just drag-and-drop the three `.git.md` files (Ma_Assayer, Ma_Golide_Mothership, Ma_Golide_Satellites) into the chat or workspace.
+4. Authorize the Google Connector when prompted.
+
+Would you like me to also give you:
+- A **lighter version** of the prompt (if the full one is too long for Replit)?
+- A **Python-only version** using `gspread` + `pandas` that you can run manually?
+- Or the **first piece of code** the Agent will probably generate (Satellite Registry class)?
+
+Just say the word and I’ll give it to you instantly. The Gold Universe is about to go multi-sheet in Replit 🚀

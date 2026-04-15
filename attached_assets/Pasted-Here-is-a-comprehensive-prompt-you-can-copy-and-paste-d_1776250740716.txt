@@ -1,0 +1,28 @@
+Here is a comprehensive prompt you can copy and paste directly into Replit. It is designed to instruct the Replit Agent to build a scalable ingestion system capable of handling hundreds of dynamic Satellite sheets, while keeping the architecture aligned with your specific Phase 1 rules and terminology.
+
+***
+
+**Copy and paste the following into Replit:**
+
+```text
+Act as an expert Python data engineer and systems architect. We are building the central data ingestion hub for a modular sports analytics system called the "Gold Universe". 
+
+The architecture consists of three interconnected layers:
+1. Satellites: Hundreds of individual Google Sheets (acting as data feeds) separated by day and league, starting from January 10th. These currently contain legacy code but will eventually be updated.
+2. Ma Assayer: The purity engine that processes satellite data to evaluate edges and league purity.
+3. Ma Golide Mothership: The central brain that reads Assayer contracts to build accas and manage the Intelligence Core (MIC) and HiveMind.
+
+Your task is to build a highly scalable Python backend (using `gspread` and `google-oauth` via a Service Account) capable of managing connections to hundreds of these Google Sheets without timing out or hitting rate limits. 
+
+Requirements for this build:
+- Architecture & Scope: Set up a registry system where I can input or discover the hundreds of Satellite sheet IDs/URLs mapped by Date (e.g., Jan 10) and League. Create the batch-fetching logic to pull their raw data.
+- System Rules: Manual control is the default for all ingestion and execution triggers. Completely omit audit logs and automated rollback mechanisms to avoid complexity in this Phase 1 build. 
+- Data Mapping: When setting up the data schemas for the betting products that will eventually feed the Mothership, explicitly define the categories. The safe tier must be defined as "bankers", and the risky tier must be classified as "robbers" (which are the direct opposite of bankers). 
+
+Please write the Python code to set up the authentication framework, the sheet registry manager, and a rate-limited batch-fetching function that can handle the volume of hundreds of Satellite sheets. Store all credentials securely using Replit Secrets.
+```
+
+***
+
+### Why this approach works best for your scale:
+For hundreds of sheets, relying on the built-in Replit user-auth connector can become cumbersome if session tokens expire or scopes aren't broad enough. By instructing the agent to use `gspread` and a **Service Account**, you create a true machine-to-machine connection. You will just need to share the root Google Drive folder containing all the Satellite sheets with the Service Account email, and the script will instantly have access to read every league sheet from January 10th onwards.
