@@ -1689,19 +1689,8 @@ function analyzeQuarterWinner(allGames, statsSheet) {
   }
 }
 
-/**
- * WHY: This function analyzes the Over/Under (O/U) performance of
- * the quarter scores. It answers: "Is the model's predicted average
- * points per quarter ('Avg'/4) accurate?" and builds a statistical
- * model (Mean, Standard Deviation) of *actual* quarter totals.
- * WHAT: Analyzes the predicted 'Avg' score vs. actual quarter total scores.
- * HOW: It loops through every game, calculates the actual total score for
- * each quarter, and stores these values. It then calculates advanced
- * statistics (Mean, SD, Safe Ranges) and writes them to the 'LeagueQuarterO_U_Stats' sheet.
- * WHERE: Called by 'runAllHistoricalAnalyzers'. Reads 'allGames'. Writes to 'LeagueQuarterO_U_Stats'.
- * @param {Array<Array<string>>} allGames Combined data from Clean/ResultsClean.
- * @param {GoogleAppsScript.Spreadsheet.Sheet} statsSheet The 'LeagueQuarterO_U_Stats' output sheet.
- */
+
+
 function analyzeQuarterOU(allGames, statsSheet) {
   Logger.log('Running analyzeQuarterOU...');
 
