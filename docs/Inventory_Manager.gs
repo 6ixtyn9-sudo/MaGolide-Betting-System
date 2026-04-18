@@ -557,23 +557,8 @@ function _runAllTier2Parsers(
   Logger.log('All Tier 2 parsers complete.');
 }
 
-/**
- * =====================================================================
- * ANALYZER: analyzeTier2Stats
- * =====================================================================
- * WHY:
- *   Build a venue-aware quarter win/loss model for every team from
- *   all CleanH2H_* and CleanRecent*_* sheets.
- *
- * WHAT:
- *   Produces TeamQuarterStats_Tier2 with rows like:
- *     Team | Venue | Quarter | Wins | Losses | Ties | Win% | Games
- *
- * WHERE:
- *   Reads from: CleanH2H_*, CleanRecentHome_*, CleanRecentAway_*.
- *   Writes to: TeamQuarterStats_Tier2.
- * =====================================================================
- */
+
+
 function analyzeTier2Stats(ss) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   Logger.log('Running analyzeTier2Stats (Venue-Aware)…');
@@ -2426,24 +2411,9 @@ function calculateExpectedValue_(pWin, pPush) {
     percent: evPercent
   };
 }
-/**
- * =====================================================================
- * LOADER: loadLeagueQuarterOUStats_
- * =====================================================================
- * Loads quarter-level O/U statistics from LeagueQuarterO_U_Stats sheet.
- * 
- * COMPATIBLE WITH: analyzeQuarterOU output format which has:
- *   Row 1: Title row (optional)
- *   Row 2: Headers (League, Quarter, Count, Mean (Actual), Over %, Under %, etc.)
- *   Row 3+: Data
- * 
- * Returns nested map: league → quarter → {
- *   count, mean, sd, median, min, max,
- *   overPct, underPct,
- *   predQAvg, safeLower, safeUpper
- * }
- * Returns empty object if sheet not found (does NOT throw error)
- */
+
+
+
 function loadLeagueQuarterOUStats_(ss, debug) {
   var FN = 'loadLeagueQuarterOUStats_';
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
