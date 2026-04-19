@@ -4511,7 +4511,11 @@ function predictQuarters_Tier2_OU(ss, options) {
         matchup: matchupStr,
         home: home,
         away: away,
+        homeTeam: home,
+        awayTeam: away,
         league: league,
+        date: row[h.date] || '',
+        time: row[h.time] || '',
         quarter: Q,
         prediction: pickDir,
         direction: pickDir,
@@ -4520,12 +4524,16 @@ function predictQuarters_Tier2_OU(ss, options) {
         threshold: bookLine,
         confidence: scored.confPct,
         ev: scored.ev,
+        evPercent: scored.ev,
         edge: scored.edge,
         tier: scored.tier,
         edgeScore: scored.edgeScore,
         sampleSize: sampleSize,
         isBayesian: isBayesian,
-        isForebet: fbUsedThisGame
+        isForebet: fbUsedThisGame,
+        configVersion: VERSION,
+        expectedQ: model.mu,
+        pushPct: (scored.pPush * 100)
       });
 
       rowColors.push(_getTierColor(scored.tier, scored.direction));
@@ -4608,6 +4616,20 @@ function predictQuarters_Tier2_OU(ss, options) {
 
   if (showUI && ui) {
     _showResultsDialog(ui, stats, topElite, topStrong, topMedium, fbConfig.enabled);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PERSIST TO OU_Log (Fix: Ensuring Accumulator can find these signals)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (typeof logOUPrediction_ === 'function') {
+    allPredictions.forEach(function(p) {
+      try {
+        logOUPrediction_(ss, p);
+      } catch (eLog) {
+        Logger.log('[O/U LOG ERROR] ' + eLog.message);
+      }
+    });
+    Logger.log('[OU_Log] Persisted ' + allPredictions.length + ' predictions.');
   }
 
   var msg = 'T2 O/U: ' + stats.games + ' games, ' + stats.picks + ' picks';
