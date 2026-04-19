@@ -3286,6 +3286,86 @@ function _m8_forensicIdsForSlip_(pick, market, period, cfgVer) {
   return { universalGameId: universalGameId, sourcePredictionRecordId: sourcePredictionRecordId };
 }
 
+function _extractFirstNumber_(s) {
+  var m = String(s || '').match(/([+-]?\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : NaN;
+}
+
+function _extractParenNumber_(s) {
+  // pulls 5.4 from "(5.4)" or "(-8.9)"
+  var m = String(s || '').match(/\(\s*([+-]?\d+(?:\.\d+)?)\s*\)/);
+  return m ? parseFloat(m[1]) : NaN;
+}
+
+function _parseAHSide_(s) {
+  // looks for "Q1: A +8.0" or "Q2: H +4.0" or "A +8.0"
+  var t = String(s || '').toUpperCase();
+  if (t.match(/\bA\b/)) return 'AWAY';
+  if (t.match(/\bH\b/)) return 'HOME';
+  return '';
+}
+
+/**
+ * Normalize non-odds/non-EV selection fields to satisfy BET_SLIPS_CONTRACT_23.
+ * Call this right before you assemble the 23-column output row.
+ */
+function _normalizeSelectionFields_(bet) {
+  // Expect bet to be an object with:
+  // bet.market, bet.period, bet.home, bet.away,
+  // bet.selectionSide, bet.selectionLine, bet.selectionTeam, bet.selectionText
+
+  var market = String(bet.market || '').toUpperCase();
+  var period = String(bet.period || '').toUpperCase();
+  var text   = String(bet.selectionText || '').trim();
+
+  // --- FIRST HALF handicap: fill missing positive lines from "(5.4)"
+  if (market === 'FIRST_HALF_1X2') {
+    if ((bet.selectionLine === '' || bet.selectionLine == null || !isFinite(bet.selectionLine)) && text) {
+      var n = _extractParenNumber_(text);
+      if (!isFinite(n)) n = _extractFirstNumber_(text);
+      if (isFinite(n)) bet.selectionLine = n;
+    }
+  }
+
+  // --- SNIPER_MARGIN: fill side/team from A/H if missing
+  if (market === 'SNIPER_MARGIN') {
+    if (!bet.selectionSide) {
+      var s = _parseAHSide_(text);
+      if (s) bet.selectionSide = s;
+    }
+    if (!bet.selectionTeam) {
+      if (bet.selectionSide === 'HOME') bet.selectionTeam = bet.home || '';
+      if (bet.selectionSide === 'AWAY') bet.selectionTeam = bet.away || '';
+    }
+  }
+
+  // --- Totals: ensure Selection_Team not blank
+  if (market === 'FT_OU' || market === 'SNIPER_OU') {
+    if (!bet.selectionTeam) bet.selectionTeam = bet.selectionSide || '';
+  }
+
+  // --- Highest quarter (your output shows Market=SNIPER, Period=Q2, text="Highest Q: Q2")
+  // If you have a dedicated market name for this internally, add it too.
+  if (market === 'SNIPER') {
+    if (text.toUpperCase().indexOf('HIGHEST') !== -1) {
+      if (!bet.selectionSide) bet.selectionSide = period;  // Q2
+      if (!bet.selectionTeam) bet.selectionTeam = period;  // Q2
+      // Selection_Line should be same as Selection_Side
+      bet.selectionLine = period;
+    }
+  }
+
+  // --- BANKER and ROBBER: fill Selection_Line with 1 (HOME) or 2 (AWAY)
+  if (market === 'BANKER' || market === 'ROBBER') {
+    if (!bet.selectionLine) {
+      if (bet.selectionSide === 'HOME') bet.selectionLine = '1';
+      else if (bet.selectionSide === 'AWAY') bet.selectionLine = '2';
+    }
+  }
+
+  return bet;
+}
+
 /**
  * One machine row for Bet_Slips — BET_SLIPS_CONTRACT_23 (Phase 2 Patch 3B).
  * cfgBundle: { t1, t2, acc } config version stamps.
@@ -3343,6 +3423,25 @@ function _formatBetSlipRow_(pick, market, period, cfgBundle, slipIndex,
     var _marginM = pickStr.match(/([+-]\d+\.?\d*)/);
     if (_marginM) lineStr = _marginM[1];
   }
+
+  var tempBet = {
+    market: market,
+    period: period,
+    home: teams.home || '',
+    away: teams.away || '',
+    selectionSide: side,
+    selectionLine: lineStr,
+    selectionTeam: selectionTeam,
+    selectionText: pickStr
+  };
+  
+  tempBet = _normalizeSelectionFields_(tempBet);
+  
+  side = tempBet.selectionSide;
+  lineStr = tempBet.selectionLine;
+  selectionTeam = tempBet.selectionTeam;
+  pickStr = tempBet.selectionText;
+
   var evDisp = formatEV(pick.ev);
   var t1 = (cfgBundle && cfgBundle.t1) || '';
   var t2 = (cfgBundle && cfgBundle.t2) || '';
