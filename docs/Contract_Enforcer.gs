@@ -1830,3 +1830,206 @@ function validateUpsertPolicy(sheetName, data) {
   
   return UpsertPolicyEnforcement.validateUpsertData(data, policy);
 }
+
+
+
+// ============================================================================
+// Bet_Slips in-place splitter (SNIPERS -> 3 blocks)
+// ============================================================================
+
+function splitSnipersIntoThreeBlocks_BetSlips_(ssOpt) {
+  try {
+    var ss = ssOpt || SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return false;
+
+    var sh = _mg_bs_getSheetInsensitive_(ss, "Bet_Slips");
+    if (!sh) return false;
+
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    if (lastRow < 2 || lastCol < 5) return false;
+
+    var values = sh.getRange(1, 1, lastRow, lastCol).getValues();
+
+    var cand = _mg_bs_findLatestCombinedSnipersBlock_(values, lastCol);
+    if (!cand) return false;
+
+    var sectionStartIdx = cand.sectionStartIdx;
+    var dataStartIdx    = cand.dataStartIdx;
+    var endIdx          = cand.endIdx;
+    var headers         = cand.headers;
+    var idxMarket       = cand.idxMarket;
+    var idxSelTxt       = cand.idxSelTxt;
+
+    var sniperRows = values.slice(dataStartIdx, endIdx);
+
+    var M_MARGIN   = "SNIPER_MARGIN";
+    var M_OU       = "SNIPER_OU";
+    var M_OU_DIR   = "SNIPER_OU_DIR";
+    var M_OU_STAR  = "SNIPER_OU_STAR";
+    var M_HIGH_QTR = "SNIPER_HIGH_QTR";
+
+    var margin = [], ou = [], hq = [], other = [];
+
+    for (var k = 0; k < sniperRows.length; k++) {
+      var rr = sniperRows[k].slice();
+      _mg_bs_padRow_(rr, lastCol);
+
+      var m  = String(rr[idxMarket] || "").trim().toUpperCase();
+      var st = (idxSelTxt >= 0) ? String(rr[idxSelTxt] || "") : "";
+
+      if      (m === M_MARGIN)                                      margin.push(rr);
+      else if (m === M_OU || m === M_OU_DIR || m === M_OU_STAR)    ou.push(rr);
+      else if (m === M_HIGH_QTR || /highest\s*q/i.test(st))        hq.push(rr);
+      else                                                          other.push(rr);
+    }
+
+    // "SNIPER" market rows (your HQ picks) land in other -> go to HQ block
+    for (var z = 0; z < other.length; z++) hq.push(other[z]);
+
+    var repl = [];
+    var styledRows = [];
+
+    function pushBlock(title, rows, bg) {
+      if (!rows || !rows.length) return;
+      if (repl.length) repl.push(_mg_bs_blankRow_(lastCol));
+      styledRows.push({ at: repl.length, bg: bg });
+      repl.push(_mg_bs_sectionRow_(title, lastCol));
+      repl.push(headers.slice());
+      for (var i = 0; i < rows.length; i++) repl.push(rows[i]);
+    }
+
+    pushBlock("──── SNIPERS — MARGIN ────",    margin, "#9FC5E8");
+    pushBlock("──── SNIPERS — O/U ────",       ou,     "#B6D7A8");
+    pushBlock("──── SNIPERS — HIGHEST Q ────", hq,     "#D9D2E9");
+
+    if (!repl.length) return false;
+
+    var startRow1   = sectionStartIdx + 1;
+    var removeCount = endIdx - sectionStartIdx;
+    if (removeCount <= 0) return false;
+
+    var maxRows    = sh.getMaxRows();
+    var safeRemove = Math.min(removeCount, maxRows - startRow1 + 1);
+    if (safeRemove > 0) sh.deleteRows(startRow1, safeRemove);
+
+    var maxAfter = sh.getMaxRows();
+    if (startRow1 > maxAfter) {
+      sh.insertRowsAfter(maxAfter, repl.length);
+      startRow1 = maxAfter + 1;
+    } else {
+      sh.insertRowsBefore(startRow1, repl.length);
+    }
+
+    sh.getRange(startRow1, 1, repl.length, lastCol).setValues(repl);
+
+    for (var s = 0; s < styledRows.length; s++) {
+      _mg_bs_styleHeaderRow_(sh, startRow1 + styledRows[s].at, lastCol, styledRows[s].bg);
+    }
+
+    Logger.log('[splitSnipersIntoThreeBlocks_BetSlips_] Done. ' + repl.length + ' rows written.');
+    return true;
+
+  } catch (e) {
+    Logger.log("[splitSnipersIntoThreeBlocks_BetSlips_] ERROR: " + (e && e.message ? e.message : e));
+    return false;
+  }
+}
+
+function _mg_bs_findLatestCombinedSnipersBlock_(values, lastCol) {
+  for (var r = values.length - 1; r >= 0; r--) {
+    if (String(values[r][0] || "").trim() !== "Bet_Record_ID") continue;
+
+    var headers   = values[r].slice();
+    _mg_bs_padRow_(headers, lastCol);
+
+    var idxMarket = _mg_bs_findHeader_(headers, "Market");
+    if (idxMarket < 0) continue;
+
+    var idxSelTxt = _mg_bs_findHeader_(headers, "Selection_Text");
+
+    var dataStartIdx = r + 1;
+    var endIdx       = dataStartIdx;
+    var hasMargin = false, hasOU = false, hasSniper = false, hasAny = false;
+
+    for (; endIdx < values.length; endIdx++) {
+      var row   = values[endIdx];
+      if (_mg_bs_rowIsEmpty_(row)) break;
+      var cellA = String(row[0] || "").trim();
+      if (cellA === "Bet_Record_ID") break;
+      var m = String(row[idxMarket] || "").trim().toUpperCase();
+      if (!m || m.indexOf("SNIPER") !== 0) break;
+      hasAny = true;
+      if      (m === "SNIPER_MARGIN")                                              hasMargin = true;
+      else if (m === "SNIPER_OU" || m === "SNIPER_OU_DIR" || m === "SNIPER_OU_STAR") hasOU  = true;
+      else if (m === "SNIPER")                                                     hasSniper = true;
+    }
+
+    if (!hasAny) continue;
+
+    // Only split if block contains multiple SNIPER families
+    var familyCount = (hasMargin ? 1 : 0) + (hasOU ? 1 : 0) + (hasSniper ? 1 : 0);
+    if (familyCount < 2) continue;
+
+    // Include the section title row above if it looks like a header/divider
+    var sectionStartIdx = r;
+    if (r - 1 >= 0) {
+      var above = String(values[r - 1][0] || "").trim();
+      if (above && (/sniper/i.test(above) || /^[-=─_]{3,}/.test(above))) sectionStartIdx = r - 1;
+      else if (_mg_bs_rowIsEmpty_(values[r - 1])) sectionStartIdx = r - 1;
+    }
+
+    return {
+      sectionStartIdx: sectionStartIdx,
+      colHdrIdx:       r,
+      dataStartIdx:    dataStartIdx,
+      endIdx:          endIdx,
+      headers:         headers,
+      idxMarket:       idxMarket,
+      idxSelTxt:       idxSelTxt
+    };
+  }
+  return null;
+}
+
+function _mg_bs_findHeader_(headersRow, name) {
+  var target = String(name || "").trim().toLowerCase();
+  for (var i = 0; i < headersRow.length; i++) {
+    if (String(headersRow[i] || "").trim().toLowerCase() === target) return i;
+  }
+  return -1;
+}
+
+function _mg_bs_padRow_(row, width) {
+  while (row.length < width) row.push("");
+  if (row.length > width) row.length = width;
+  return row;
+}
+
+function _mg_bs_blankRow_(width) {
+  var r = new Array(width); for (var i = 0; i < width; i++) r[i] = ""; return r;
+}
+
+function _mg_bs_sectionRow_(title, width) {
+  var r = _mg_bs_blankRow_(width); r[0] = title; return r;
+}
+
+function _mg_bs_rowIsEmpty_(row) {
+  for (var i = 0; i < row.length; i++) { if (String(row[i] || "").trim() !== "") return false; } return true;
+}
+
+function _mg_bs_styleHeaderRow_(sh, row1, lastCol, bg) {
+  sh.getRange(row1, 1, 1, lastCol).setBackground(bg).setFontColor("#000000").setFontWeight("bold");
+}
+
+function _mg_bs_getSheetInsensitive_(ss, name) {
+  if (!ss || !name) return null;
+  var exact = ss.getSheetByName(name);
+  if (exact) return exact;
+  var target = String(name).toLowerCase().trim();
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (String(sheets[i].getName()).toLowerCase().trim() === target) return sheets[i];
+  }
+  return null;
+}
