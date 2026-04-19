@@ -70,13 +70,12 @@ function t2_resetSharedGameContext_(ss, meta) {
     _version:       'R4-PATCH1',
     runId:          runId,
     createdAt:      new Date(),
-    spreadsheetId:  (ss && typeof ss.getId === 'function') ? ss.getId() : '',
-    meta:           meta,
+    // metadata for the orchestrator
+    ssId: (ss && typeof ss.getId === 'function') ? ss.getId() : 'active',
+    ts: new Date(),
+    options: meta || {},
 
-    // ── Per-game records ────────────────────────────────────────────────
-    // Keyed by stable match key (Patches 2-6 define keying convention).
-    // O/U populates games[key].ouPredictions; HQ reads it.
-    // HQ populates games[key].hqDominant;  Accumulator reads it.
+    // games keyed by "home vs away" (lowercase)
     games: {},
 
     // ── Pipeline rollup sections ────────────────────────────────────────
@@ -90,7 +89,7 @@ function t2_resetSharedGameContext_(ss, meta) {
     flags: {}
   };
 
-  T2_SHARED_GAME_CONTEXT = ctx;
+  globalThis.T2_SHARED_GAME_CONTEXT = ctx;
   return ctx;
 }
 
@@ -99,12 +98,12 @@ function t2_resetSharedGameContext_(ss, meta) {
  * (e.g., Module 9 called standalone outside runTier2_BothModes).
  */
 function t2_getSharedGameContext_() {
-  // Return null if not initialized yet, but never throw ReferenceError.
-  if (typeof T2_SHARED_GAME_CONTEXT === 'undefined') {
-    globalThis.T2_SHARED_GAME_CONTEXT = null;
-    return null;
+  // Use globalThis explicitly to ensure we pick up the same object across files
+  var g = (typeof globalThis !== 'undefined') ? globalThis : this;
+  if (typeof g.T2_SHARED_GAME_CONTEXT === 'undefined') {
+    g.T2_SHARED_GAME_CONTEXT = null;
   }
-  return T2_SHARED_GAME_CONTEXT || null;
+  return g.T2_SHARED_GAME_CONTEXT || null;
 }
 
 /**
@@ -113,20 +112,17 @@ function t2_getSharedGameContext_() {
  */
 function t2_traceSharedGameContextStep_(stepName, status, detail) {
   try {
-    // Guard against ReferenceError if the identifier was never declared.
-    if (typeof T2_SHARED_GAME_CONTEXT === 'undefined') {
-      // Create the global binding so later reads won't explode.
-      globalThis.T2_SHARED_GAME_CONTEXT = null;
+    var g = (typeof globalThis !== 'undefined') ? globalThis : this;
+    if (typeof g.T2_SHARED_GAME_CONTEXT === 'undefined' || !g.T2_SHARED_GAME_CONTEXT) {
       return;
     }
 
-    if (!T2_SHARED_GAME_CONTEXT) return;
-
-    if (!T2_SHARED_GAME_CONTEXT.steps || !Array.isArray(T2_SHARED_GAME_CONTEXT.steps)) {
-      T2_SHARED_GAME_CONTEXT.steps = [];
+    var ctx = g.T2_SHARED_GAME_CONTEXT;
+    if (!ctx.steps || !Array.isArray(ctx.steps)) {
+      ctx.steps = [];
     }
 
-    T2_SHARED_GAME_CONTEXT.steps.push({
+    ctx.steps.push({
       step:   String(stepName || ''),
       status: String(status || ''),
       detail: detail || '',
