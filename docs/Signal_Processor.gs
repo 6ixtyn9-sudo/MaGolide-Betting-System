@@ -2346,6 +2346,13 @@ function runParseUpcoming(ss) {
   ['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'Status', 'FT Score'].forEach(ensureHeader_);
   ['t2-q1', 't2-q2', 't2-q3', 't2-q4'].forEach(ensureHeader_);
 
+  // O/U Columns (Required for Module 6 writes and Module 10 reads)
+  for (var qi = 1; qi <= 4; qi++) {
+    var qk = 'q' + qi;
+    ['ou-' + qk, 'ou-' + qk + '-conf', 'ou-' + qk + '-ev', 'ou-' + qk + '-edge', 'ou-' + qk + '-push', 'ou-' + qk + '-tier'].forEach(ensureHeader_);
+  }
+  ['ou-edge-score', 'ou-highest-est', 'ou-fb-used', 'ou-bayesian-used', 'ou-best', 'ou-best-q', 'ou-best-ev', 'ou-best-edge', 'ou-game-tier', 'ou-best-conf', 'ou-best-dir'].forEach(ensureHeader_);
+
   if (columnsAdded) {
     for (var rr = 1; rr < data.length; rr++) {
       while (data[rr].length < headers.length) data[rr].push('');
