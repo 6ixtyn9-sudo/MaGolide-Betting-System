@@ -1415,14 +1415,7 @@ function deriveHighestQuarter(game, marginStats, config, t2) {
 }
 
 
-// ╔═══════════════════════════════════════════════════════════════════════════════════════════════════╗
-// ║  SECTION 3: LAYER 3 - _writeBetSlipsEnhanced WRAPPER                                              ║
-// ╚═══════════════════════════════════════════════════════════════════════════════════════════════════╝
 
-/**
- * Installs sanitization wrapper around _writeBetSlipsEnhanced.
- * Safe to call multiple times (idempotent).
- */
 function _acc_installWriteWrapper_() {
   try {
     if (typeof _writeBetSlipsEnhanced !== 'function') {
@@ -2884,6 +2877,15 @@ if (config.includeHighestQuarter) {
       ftOUs: ftOUs
     }, config, tierCuts, enhEnabled);
 
+// Split combined SNIPERS block into 3 separate blocks
+    try {
+      if (typeof splitSnipersIntoThreeBlocks_BetSlips_ === 'function') {
+        splitSnipersIntoThreeBlocks_BetSlips_(ss);
+      }
+    } catch (eSplit) {
+      Logger.log('[buildAccumulator] SNIPERS split error (non-fatal): ' + (eSplit && eSplit.message ? eSplit.message : eSplit));
+    }
+
     var summary = 'Bankers: ' + bankers.length +
       ', Snipers: ' + snipers.length +
       ', Robbers: ' + robbers.length +
@@ -3063,7 +3065,7 @@ function runAccumulator(ss) {
   // LAYERS 1 & 2: Run buildAccumulator
   var result = buildAccumulator(ss);
   
-  // LAYER 4: Post-write sheet scrub
+// LAYER 4: Post-write sheet scrub
   try {
     var scrub = _acc_scrubBetSlipsSheet_(ss);
     Logger.log('[runAccumulator] Layer 4 post-scrub: ' + (scrub.touched || 0) + ' cells fixed');
@@ -3074,7 +3076,7 @@ function runAccumulator(ss) {
   } catch (e) {
     Logger.log('[runAccumulator] Layer 4 error (non-fatal): ' + e.message);
   }
-  
+
   return result;
 }
 
