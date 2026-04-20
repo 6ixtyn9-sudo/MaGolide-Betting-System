@@ -2224,11 +2224,26 @@ function mg_resolveTeamData_(stats, team) {
 }
 
 
+var __t2ou_missingQCache = {};
+
 function t2ou_getTeamVenueQuarter_(teamStats, team, venue, Q) {
   var TAG = 't2ou_getTeamVenueQuarter_';
   var debugFlag = (typeof T2OU_DEBUG_LOOKUP !== 'undefined' && T2OU_DEBUG_LOOKUP);
 
   if (!teamStats || !team || !venue || !Q) return null;
+
+  var teamKeyRaw = String(team).trim();
+  if (!teamKeyRaw) return null;
+
+  var venueRaw = String(venue).trim();
+  var venueKey =
+    (/^home$/i.test(venueRaw) ? 'Home' :
+     /^away$/i.test(venueRaw) ? 'Away' : venueRaw);
+
+  var qKey = String(Q).trim().toUpperCase();
+  var cacheKey = teamKeyRaw + '|' + venueKey + '|' + qKey;
+
+  if (__t2ou_missingQCache[cacheKey]) return null;
 
   var teamKeyRaw = String(team).trim();
   if (!teamKeyRaw) return null;
@@ -2268,24 +2283,32 @@ function t2ou_getTeamVenueQuarter_(teamStats, team, venue, Q) {
   }
 
   if (!teamData) {
-    t2ou_dbg_(TAG, 'Team not found: "' + teamKeyRaw + '"', debugFlag);
-    if (debugFlag) {
-      // Optional: quick hint of near-matches
-      var hint = Object.keys(teamStats).filter(function(k) {
-        return mg_teamKey_(k).indexOf(mg_teamKey_(teamKeyRaw)) >= 0;
-      }).slice(0, 5);
-      if (hint.length) t2ou_dbg_(TAG, 'Closest keys: ' + hint.join(' | '), true);
+    if (!__t2ou_missingQCache[cacheKey]) {
+      t2ou_dbg_(TAG, 'Team not found: "' + teamKeyRaw + '"', debugFlag);
+      if (debugFlag) {
+        var hint = Object.keys(teamStats).filter(function(k) {
+          return mg_teamKey_(k).indexOf(mg_teamKey_(teamKeyRaw)) >= 0;
+        }).slice(0, 5);
+        if (hint.length) t2ou_dbg_(TAG, 'Closest keys: ' + hint.join(' | '), true);
+      }
+      __t2ou_missingQCache[cacheKey] = true;
     }
     return null;
   }
 
   if (!teamData[venueKey]) {
-    t2ou_dbg_(TAG, 'Venue not found: team="' + teamKeyRaw + '" venue="' + venueKey + '"', debugFlag);
+    if (!__t2ou_missingQCache[cacheKey]) {
+      t2ou_dbg_(TAG, 'Venue not found: team="' + teamKeyRaw + '" venue="' + venueKey + '"', debugFlag);
+      __t2ou_missingQCache[cacheKey] = true;
+    }
     return null;
   }
 
   if (!teamData[venueKey][qKey]) {
-    t2ou_dbg_(TAG, 'Quarter not found: team="' + teamKeyRaw + '" venue="' + venueKey + '" Q="' + qKey + '"', debugFlag);
+    if (!__t2ou_missingQCache[cacheKey]) {
+      t2ou_dbg_(TAG, 'Quarter not found: team="' + teamKeyRaw + '" venue="' + venueKey + '" Q="' + qKey + '"', debugFlag);
+      __t2ou_missingQCache[cacheKey] = true;
+    }
     return null;
   }
 

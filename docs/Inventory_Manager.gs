@@ -5858,10 +5858,10 @@ function loadHighQtrPredictions_(ss) {
 
   // Flexible required columns (alternatives per field)
   var requiredAlternatives = [
-    ['date', 'gamedate', 'game_date'],
-    ['match', 'matchup', 'game', 'teams'],
-    ['pick', 'selection', 'bet'],
-    ['type', 'bettype', 'bet_type', 'category']
+    ['date', 'gamedate', 'game_date', 'selectiondate'],
+    ['match', 'matchup', 'game', 'teams', 'selectionmatch', 'selectiongame', 'home'],
+    ['pick', 'selection', 'bet', 'selectionpick', 'selectiontext'],
+    ['type', 'bettype', 'bet_type', 'category', 'selectiontype', 'market']
   ];
 
   // ─────────────────────────────────────────────────────────────
@@ -5879,13 +5879,15 @@ function loadHighQtrPredictions_(ss) {
       var end = (b + 1 < headerBlocks.length) ? headerBlocks[b + 1].rowIndex : data.length;
 
       // Get column indexes
-      var dateCol = findColumn_(hdr, ['date', 'gamedate']);
-      var matchCol = findColumn_(hdr, ['match', 'matchup', 'game', 'teams']);
-      var pickCol = findColumn_(hdr, ['pick', 'selection', 'bet']);
-      var typeCol = findColumn_(hdr, ['type', 'bettype', 'category']);
+      var dateCol = findColumn_(hdr, ['date', 'gamedate', 'selectiondate']);
+      var matchCol = findColumn_(hdr, ['match', 'matchup', 'game', 'teams', 'selectionmatch', 'selectiongame']);
+      var homeCol = findColumn_(hdr, ['home']);
+      var awayCol = findColumn_(hdr, ['away']);
+      var pickCol = findColumn_(hdr, ['pick', 'selection', 'bet', 'selectionpick', 'selectiontext']);
+      var typeCol = findColumn_(hdr, ['type', 'bettype', 'category', 'selectiontype', 'market']);
 
       // Skip block if required columns missing
-      if (matchCol === undefined || pickCol === undefined || typeCol === undefined) {
+      if ((matchCol === undefined && (homeCol === undefined || awayCol === undefined)) || pickCol === undefined || typeCol === undefined) {
         Logger.log('[HIGH_QTR] Skipping block at row ' + (hdrRowIdx + 1) + ': missing columns');
         continue;
       }
@@ -5901,7 +5903,9 @@ function loadHighQtrPredictions_(ss) {
         // Normalize type for matching
         var type = String(row[typeCol] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         var pick = String(row[pickCol] || '');
-        var match = String(row[matchCol] || '');
+        var match = matchCol !== undefined ? String(row[matchCol] || '') : 
+                    (homeCol !== undefined && awayCol !== undefined) ? 
+                    (String(row[homeCol] || '') + ' vs ' + String(row[awayCol] || '')) : '';
         var date = dateCol !== undefined ? row[dateCol] : '';
 
         // Check if this is a HIGH_QTR prediction
@@ -5914,7 +5918,8 @@ function loadHighQtrPredictions_(ss) {
         }
         if (!isHighQtr && /highest\s*scoring\s*q/i.test(pick)) isHighQtr = true;
         if (!isHighQtr && /high\s*qtr/i.test(pick)) isHighQtr = true;
-        if (!isHighQtr && /hsq/i.test(type)) isHighQtr = true;
+        if (!isHighQtr && /highest\s*q/i.test(pick)) isHighQtr = true;
+        if (!isHighQtr && type.indexOf('SNIPER') !== -1 && /highest\s*q/i.test(pick)) isHighQtr = true;
         if (!isHighQtr) continue;
 
         // Extract quarter from pick text

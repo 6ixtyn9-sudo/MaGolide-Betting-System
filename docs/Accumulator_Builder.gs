@@ -935,10 +935,21 @@ function detectRobbers(gameData, h2hStats, recentForm, config) {
       // Use probability: higher prob = favorite, so underdog = lower prob side
       isHomeUnderdog = (probHome < probAway);
     } else {
-      _robbers_log_(fn, 'EXIT: Cannot determine sides — no odds and no prediction data');
-      return null;
+      var hForm = 0, aForm = 0;
+      if (recentForm) {
+        var hK = home.toLowerCase().replace(/[^a-z0-9]/g, '');
+        var aK = away.toLowerCase().replace(/[^a-z0-9]/g, '');
+        for (var k in recentForm) {
+          var tk = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (tk === hK && recentForm[k]) hForm = _robbers_toNum_(recentForm[k].overallWinRate, 0);
+          if (tk === aK && recentForm[k]) aForm = _robbers_toNum_(recentForm[k].overallWinRate, 0);
+        }
+      }
+      isHomeUnderdog = (hForm <= aForm); // default Home underdog if tied
+      _robbers_log_(fn, 'Sides inferred from Form: ' + (isHomeUnderdog ? home : away) + ' is underdog (no odds or pred)');
     }
   }
+
 
   underdog = isHomeUnderdog ? home : away;
   favorite = isHomeUnderdog ? away : home;
@@ -950,15 +961,13 @@ function detectRobbers(gameData, h2hStats, recentForm, config) {
     // ─── ODDS RANGE VALIDATION (only when odds are available) ────────────────
     var maxFavoriteOdds = _robbers_toNum_(config.maxFavoriteOdds, 2.20);
     if (favoriteOdds > maxFavoriteOdds) {
-      _robbers_log_(fn, 'EXIT: favoriteOdds ' + favoriteOdds.toFixed(2) + ' > max ' + maxFavoriteOdds);
-      return null;
+      _robbers_log_(fn, 'WARNING: favoriteOdds ' + favoriteOdds.toFixed(2) + ' > max ' + maxFavoriteOdds + ' (bypassed)');
     }
 
     var minOdds = _robbers_toNum_(config.minOdds, 1.80);
     var maxOdds = _robbers_toNum_(config.maxOdds, 12.00);
     if (underdogOdds < minOdds || underdogOdds > maxOdds) {
-      _robbers_log_(fn, 'EXIT: underdogOdds ' + underdogOdds.toFixed(2) + ' outside [' + minOdds + ', ' + maxOdds + ']');
-      return null;
+      _robbers_log_(fn, 'WARNING: underdogOdds ' + underdogOdds.toFixed(2) + ' outside bounds (bypassed)');
     }
   } else {
     _robbers_log_(fn, 'Predicted winner: ' + favorite + ' | Potential upset pick: ' + underdog + ' (no odds)');
@@ -2580,32 +2589,9 @@ function predictFTOverUnder(game, stats, config) {
     ouCfg.ou_min_samples = ft.minSamples;
     ouCfg.ou_confidence_scale = ft.confidenceScale;
 
-    // Wrap calibrator function as object with .applyConfidence
-    // FIX: calibrateConfidence is a BATCH function: (picks[], opts) → picks[]
-    // The scorer calls calibrator.applyConfidence(rawConfPct) → number (PER-PICK)
-    // Bridge the interface mismatch with a safe adapter
+    // FIX: Removed per-pick fake calibration that caused "pass-through" warnings.
+    // Calibration should be done with historical picks, not a single current pick.
     var calibrator = null;
-    if (typeof calibrateConfidence === 'function') {
-      calibrator = {
-        applyConfidence: function(rawConfPct) {
-          try {
-            var fakePick = [{ confPct: rawConfPct, confidence: rawConfPct, raw: rawConfPct }];
-            var result = calibrateConfidence(fakePick, {});
-            // Batch function returns modified array
-            if (Array.isArray(result) && result.length > 0) {
-              var r = result[0];
-              var cal = parseFloat(r.calConfPct || r.calibratedConfPct || r.confPct || r.confidence);
-              if (isFinite(cal) && cal > 0) return cal;
-            }
-            // Some implementations return a number directly
-            if (isFinite(result) && result > 0) return result;
-          } catch (e) {
-            // Calibration unavailable — use raw (this is safe)
-          }
-          return rawConfPct; // Fallback: raw confidence unchanged
-        }
-      };
-    }
 
     try {
       var scored = t2ou_scoreOverUnderPick_(model, ftLine, ouCfg, calibrator);

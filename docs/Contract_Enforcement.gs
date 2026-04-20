@@ -2841,9 +2841,21 @@ if (config.includeHighestQuarter) {
     robberCandidates.sort(function(a, b) {
       return toNum(b.confidence, 0) - toNum(a.confidence, 0);
     });
-    var robbers = robberCandidates
-      .filter(function(p) { return toNum(p.confidence, 0) >= config.robberMinConf; })
-      .slice(0, config.robberMaxPicks);
+    
+    var robbers = [];
+    for (var ri = 0; ri < robberCandidates.length; ri++) {
+      var p = robberCandidates[ri];
+      var conf = toNum(p.confidence, 0);
+      if (conf >= config.robberMinConf) {
+        if (robbers.length < config.robberMaxPicks) {
+          robbers.push(p);
+        } else {
+          log('ROBBER SKIPPED: Max picks (' + config.robberMaxPicks + ') reached. Dropping ' + p.pick + ' (' + conf + '%)');
+        }
+      } else {
+        log('ROBBER SKIPPED: Tier=' + (p.tier || 'WEAK') + ' below inclusion threshold (' + conf + '% < ' + config.robberMinConf + '%). Dropping ' + p.pick);
+      }
+    }
 
     firstHalfCandidates.sort(function(a, b) {
       return toNum(b.confidence, 0) - toNum(a.confidence, 0);

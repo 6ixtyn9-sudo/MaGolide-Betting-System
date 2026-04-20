@@ -510,7 +510,11 @@ function _loadVarianceMap(ss) {
     return varianceMap;
   }
   
-  var statsSheet = __s5_getSheet__(ss, 'Stats', false);
+  var statsSheet = __s5_getSheet__(ss, 'Team_Variance', false) ||
+                   __s5_getSheet__(ss, 'Variance_Map', false) ||
+                   __s5_getSheet__(ss, 'Team_Stats', false) ||
+                   __s5_getSheet__(ss, 'Stats', false);
+
   if (!statsSheet) {
     Logger.log('[' + FN + '] Stats sheet not found. Using defaults.');
     return varianceMap;

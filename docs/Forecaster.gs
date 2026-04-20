@@ -3179,6 +3179,11 @@ var __TEAM_VARIANCE_MAP_CACHE_SET = false;
 function _loadVarianceMap(ss) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   var varianceMap = {};
+  var statsSheet = __s5_getSheet ? __s5_getSheet(ss, 'Team_Variance', false) : ss.getSheetByName('Team_Variance') ||
+                   ss.getSheetByName('Variance_Map') ||
+                   ss.getSheetByName('Team_Stats') ||
+                   ss.getSheetByName('Stats');
+  if (!statsSheet) return varianceMap;
 
   function normHead_(s) {
     return String(s || '')
@@ -3741,6 +3746,9 @@ function tuneLeagueWeights(ss) {
         // Try underscores
         var underscore = lower.replace(/\s+/g, '_');
         if (headerMap[underscore] !== undefined) return headerMap[underscore];
+        // Try fully stripped (alphanumeric only)
+        var stripped = lower.replace(/[^a-z0-9]/g, '');
+        if (headerMap[stripped] !== undefined) return headerMap[stripped];
       }
       return undefined;
     }
@@ -3892,7 +3900,7 @@ function tuneLeagueWeights(ss) {
                                      'score', 'result', 'final score', 'full time']);
     const homeCol = findCol_(header, ['home', 'home team', 'hometeam', 'home_team']);
     const awayCol = findCol_(header, ['away', 'away team', 'awayteam', 'away_team']);
-    const probCol = findCol_(header, ['prob %', 'prob%', 'prob', 'probability', 'win prob']);
+    const probCol = findCol_(header, ['prob %', 'prob%', 'prob', 'prob_', 'probability', 'win prob']);
     const predScoreCol = findCol_(header, ['pred score', 'predscore', 'pred_score',
                                             'predicted score', 'predicted']);
 
