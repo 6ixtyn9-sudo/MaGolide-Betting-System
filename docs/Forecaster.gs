@@ -4150,6 +4150,28 @@ function tuneLeagueWeights(ss) {
     const MIN_COVERAGE_PCT = 15;
     const COVERAGE_PENALTY = 0.15;
 
+    // OPTIMIZATION: Pre-calculate constants to avoid calling calculateMaGolideScore 300,000+ times
+    const baseFormWeight = currentConfig.form || 2.5;
+    const baseH2hWeight = currentConfig.h2h || 1.5;
+    const baseForebetWeight = currentConfig.forebet || 3;
+    const baseVarianceWeight = currentConfig.variance || 1;
+
+    const fastTrainingSet = trainingSet.map(function(game) {
+      return {
+        actual: game.actual,
+        conf: game.confidence,
+        pctDiff: game.features.pctDiff || 0,
+        netRtgDiff: game.features.netRtgDiff || 0,
+        hcEffect: game.features.homeCourtEffect || 0,
+        momDiff: game.features.momentumDiff || 0,
+        strkDiff: game.features.streakDiff || 0,
+        baseScore: (baseFormWeight * (game.features.formDiff || 0)) +
+                   (baseH2hWeight * (game.features.h2hDiff || 0)) +
+                   (baseForebetWeight * (game.features.forebetDiff || 0)) +
+                   (baseVarianceWeight * -(game.features.variancePenalty || 0))
+      };
+    });
+
     function evaluateConfig(testConfig) {
       let correct = 0;
       let total = 0;
@@ -4161,41 +4183,63 @@ function tuneLeagueWeights(ss) {
       let tierCounts = { STRONG: 0, MEDIUM: 0, WEAK: 0, RISKY: 0 };
       let tierHits = { STRONG: 0, MEDIUM: 0, WEAK: 0 };
 
-      trainingSet.forEach(function(game) {
-        const scoreResult = calculateMaGolideScore(game.features, testConfig);
-        const sampleConf = game.confidence;
+      const pctW = testConfig.pctWeight || 0;
+      const netW = testConfig.netRtgWeight || 0;
+      const hcW = testConfig.homeCourtWeight || 0;
+      const momW = testConfig.momentumWeight || 0;
+      const strkW = testConfig.streakWeight || 0;
+      const ha = testConfig.homeAdv || 0;
+      const thresh = testConfig.threshold || 5.0;
 
-        if (scoreResult.prediction === 'RISKY') {
+      const tStrong = testConfig.tier_strong_min_score || 75;
+      const tMedium = testConfig.tier_medium_min_score || 60;
+      const tWeak = testConfig.tier_weak_min_score || 50;
+
+      for (let i = 0; i < fastTrainingSet.length; i++) {
+        const game = fastTrainingSet[i];
+        
+        // Inline core logic of calculateMaGolideScore for massive speedup
+        const score = (pctW * game.pctDiff) + 
+                      (netW * game.netRtgDiff) + 
+                      (hcW * game.hcEffect) + 
+                      (momW * game.momDiff) + 
+                      (strkW * game.strkDiff) + 
+                      game.baseScore + ha;
+                      
+        const absScore = Math.abs(score);
+
+        if (absScore < thresh) {
           riskyCount++;
           tierCounts.RISKY++;
         } else {
           total++;
-          weightedTotal += sampleConf;
+          weightedTotal += game.conf;
           
-          const isCorrect = scoreResult.prediction === game.actual;
+          const prediction = score > 0 ? 'HOME' : 'AWAY';
+          const isCorrect = prediction === game.actual;
+          
           if (isCorrect) {
             correct++;
-            weightedHits += sampleConf;
+            weightedHits += game.conf;
           }
           
-          const absScore = Math.abs(scoreResult.score);
           let tier = 'WEAK';
-          if (absScore >= testConfig.tier_strong_min_score) {
+          if (absScore >= tStrong) {
             tier = 'STRONG';
-          } else if (absScore >= testConfig.tier_medium_min_score) {
+          } else if (absScore >= tMedium) {
             tier = 'MEDIUM';
-          } else if (absScore >= testConfig.tier_weak_min_score) {
+          } else if (absScore >= tWeak) {
             tier = 'WEAK';
           }
           
           tierCounts[tier]++;
           if (isCorrect) tierHits[tier]++;
         }
-      });
+      }
 
       const accuracy = total > 0 ? (correct / total * 100) : 0;
-      const coverage = trainingSet.length > 0
-        ? ((trainingSet.length - riskyCount) / trainingSet.length * 100) : 0;
+      const coverage = fastTrainingSet.length > 0
+        ? ((fastTrainingSet.length - riskyCount) / fastTrainingSet.length * 100) : 0;
       
       const weightedScore = weightedTotal > 0 ? (weightedHits / weightedTotal * 100) : 0;
 
