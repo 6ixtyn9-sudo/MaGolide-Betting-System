@@ -200,9 +200,10 @@ def classify_tier(win_rate, lower_bound, n):
 ## 6. Satellite Sheet Data Contract
 
 Sheets pulled from each satellite:
-| Sheet name variants | Purpose |
-|---|---|
-| `Side` / `side` | Side bets (1X2, H/A picks) |
-| `Totals` / `totals` | Over/Under bets |
-| `ResultsClean` / `Results` / `results` | Settled results |
-| `UpcomingClean` / `Upcoming` / `upcoming` | Upcoming games |
+| Sheet name variants | Purpose | Format |
+|---|---|---|
+| `Bet_Slips` / `BetSlips` | Consolidated picks (Bankers, Snipers, Robbers, 1H, FT_OU) | Gold Universe / Unified |
+| `ResultsClean` / `Results` | Settled results / ground truth | Both |
+| `UpcomingClean` / `Upcoming` | Upcoming games and derived metrics | Both |
+| `Side` / `side` | Side bets (1X2, H/A picks) | Legacy (Deprecated) |
+| `Totals` / `totals` | Over/Under bets | Legacy (Deprecated) |
