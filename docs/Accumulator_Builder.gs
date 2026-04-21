@@ -684,186 +684,180 @@ var ROBBERS_CONFIG_DEFAULTS = {
 // ─────────────────────────────────────────────────────────────────────────────────
 // SECTION 3: TIER DISPLAY BUILDER
 // ─────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Build standard tier display string
- * Format: "★ (64%) ●" or "● (58%) ○"
- *
- * @param {number} confPct — Confidence percentage (0-100)
- * @param {number} ev — Expected value as decimal (e.g., 0.25 = 25%)
- * @returns {string} Formatted tier display
- */
 function _robbers_buildTierDisplay_(confPct, ev) {
-  var confSymbol, evSymbol;
-  
-  // Confidence symbol
-  if (confPct >= 70) {
-    confSymbol = '★';
-  } else if (confPct >= 60) {
-    confSymbol = '●';
-  } else {
-    confSymbol = '○';
-  }
-  
-  // EV symbol (ev is decimal)
-  if (ev >= 0.12) {
-    evSymbol = '★';
-  } else if (ev >= 0.05) {
-    evSymbol = '●';
-  } else {
-    evSymbol = '○';
-  }
-  
-  return confSymbol + ' (' + confPct + '%) ' + evSymbol;
+  return _formatTierDisplay_(confPct, ev);
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────────
-// SECTION 4: CORE NORMALIZATION FUNCTION
-// ─────────────────────────────────────────────────────────────────────────────────
 
 /**
- * _robbers_normalizePick_ — Calibrate ROBBER to unified tier/confidence system
+ * Unified Tier_Display formatter.
+ * - Uses tierCode (if provided) so Tier_Code and Tier_Display can NEVER disagree.
+ * - EV symbol: ★ (>=12%), ● (>=5%), ○ (<5%), — (unknown)
  *
- * Uses Bayesian shrinkage to anchor model probability toward market implied probability.
- * This produces realistic confidence values for upset picks.
- *
- * Formula: calibrated = implied + (raw - implied) × shrink
- *   - shrink=0.38 means: 62% weight to market, 38% weight to model
- *   - This acknowledges markets are efficient while giving credit to our signals
- *
- * @param {Object} robber — Raw robber pick from detectRobbers
- * @param {Object} config — Config with calibration parameters
- * @returns {Object} Normalized robber pick (mutated in place)
+ * @param {number} confPct
+ * @param {number|null|undefined} evDecimal  (0.12 = 12%)
+ * @param {string=} tierCode  ("ELITE"|"STRONG"|"MEDIUM"|"WEAK"|"SKIP")
+ * @returns {string}
  */
+function _formatTierDisplay_(confPct, evDecimal, tierCode) {
+  var n = Number(confPct);
+  if (!isFinite(n)) n = 0;
+  n = Math.round(Math.max(0, Math.min(100, n)));
+
+  var tier = tierCode;
+
+  // If tierCode not provided, derive from getTierObject if available
+  if (!tier && typeof getTierObject === 'function') {
+    try {
+      var tObj = getTierObject(n);
+      if (tObj && tObj.tier) tier = tObj.tier;
+    } catch (e) {}
+  }
+
+  // fallback if still missing
+  if (!tier) tier = (n >= 70) ? 'ELITE' : (n >= 63) ? 'STRONG' : (n >= 55) ? 'MEDIUM' : 'WEAK';
+
+  // Confidence symbol from tier (NOT from conf thresholds)
+  var confSymbol =
+    (tier === 'ELITE' || tier === 'STRONG') ? '★' :
+    (tier === 'MEDIUM') ? '●' :
+    (tier === 'WEAK') ? '○' : '';
+
+  // EV symbol
+  var evNum = Number(evDecimal);
+  var evSymbol;
+  if (evDecimal === null || evDecimal === undefined || !isFinite(evNum)) evSymbol = '—';
+  else if (evNum >= 0.12) evSymbol = '★';
+  else if (evNum >= 0.05) evSymbol = '●';
+  else evSymbol = '○';
+
+  return confSymbol + ' (' + n + '%) ' + evSymbol;
+}
+
 function _robbers_normalizePick_(robber, config) {
   var fn = '_robbers_normalizePick_';
-  
   if (!robber) return null;
   config = config || {};
-  
-var odds = _robbers_toNum_(robber.odds || robber.underdogOdds, 0);
 
-if (odds <= 1.01) {
-  // No valid odds — but DO standardize tier/tierDisplay for consistency
+  var odds = _robbers_toNum_(robber.odds || robber.underdogOdds, 0);
 
-  var rawConf = _robbers_toNum_(robber.confidence, 50);
-  // keep decimals if you want, but tiering usually wants an integer:
-  var confPct = Math.round(rawConf);
-  confPct = Math.max(50, Math.min(95, confPct));
+  // ─────────────────────────────────────────────────────────────────────────────
+  // NO ODDS PATH: still standardize tier + tierDisplay, but EV is unknown
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (odds <= 1.01) {
+    var rawConf0 = _robbers_toNum_(robber.confidence, 50);
 
-  // Prefer unified tier object
-  var tierObj = null;
-  try { tierObj = (typeof getTierObject === 'function') ? getTierObject(confPct) : null; } catch (e) {}
+    var confPct0 = Math.round(rawConf0);
+    confPct0 = Math.max(50, Math.min(95, confPct0));
 
-  robber.confidence = confPct;
+    robber.confidence = confPct0;
 
-  // Keep existing tier if you prefer, otherwise derive from tierObj
-  if (tierObj && tierObj.tier) robber.tier = tierObj.tier;
+    var tierObj0 = null;
+    try { tierObj0 = (typeof getTierObject === 'function') ? getTierObject(confPct0) : null; } catch (e) {}
 
-  // Consistent display:
-  if (tierObj && tierObj.display) {
-    robber.tierDisplay = tierObj.display;
-  } else {
-    // fallback: EV unknown, treat as 0 so evSymbol becomes ○
-    robber.tierDisplay = _robbers_buildTierDisplay_(confPct, 0);
+    if (tierObj0 && tierObj0.tier) {
+      robber.tier = tierObj0.tier;
+      robber.tierCode = tierObj0.tier;
+      robber.tier_code = tierObj0.tier;
+    }
+
+    // IMPORTANT: don't use tierObj.display; always use unified formatter
+    robber.tierDisplay = _formatTierDisplay_(confPct0, null);
+    robber.tier_display = robber.tierDisplay;
+
+    // EV truly unknown without odds
+    robber.ev = null;
+    robber.edge = null;
+
+    return robber;
   }
 
-  // EV/edge truly unknown without odds; pick one policy:
-  robber.ev = robber.ev ?? 0;     // or '' / null
-  robber.edge = robber.edge ?? 0; // or '' / null
-
-  return robber;
-}
-  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ODDS PRESENT PATH: your existing Bayesian shrinkage calibration
+  // ─────────────────────────────────────────────────────────────────────────────
   var impliedProb = 1.0 / odds;
-  
-  // ─── STEP 2: Extract raw confidence and convert to probability ─────────────
+
+  // STEP 2: raw confidence → raw probability
   var rawConf = _robbers_toNum_(robber.confidence, 50);
-  
-  // Store original values for debugging
+
   robber._rawConfidence = rawConf;
   robber._rawTier = robber.tier;
   robber._rawTierDisplay = robber.tierDisplay;
   robber._impliedProb = Math.round(impliedProb * 1000) / 1000;
-  
-  // Normalize to 0-1 probability (handle both percentage and decimal inputs)
+
   var rawProb = (rawConf > 1.5) ? (rawConf / 100) : rawConf;
   rawProb = Math.max(0.01, Math.min(0.99, rawProb));
-  
-  // ─── STEP 3: Bayesian shrinkage toward market probability ──────────────────
+
+  // STEP 3: shrink
   var shrink = _robbers_toNum_(config.calibrationShrink, 0.38);
-  shrink = Math.max(0.15, Math.min(0.60, shrink)); // Bound shrink factor
-  
+  shrink = Math.max(0.15, Math.min(0.60, shrink));
+
   var calibratedProb = impliedProb + (rawProb - impliedProb) * shrink;
-  
-  // ─── STEP 4: Apply realistic bounds for underdogs ──────────────────────────
+
+  // STEP 4: bounds
   var maxProb = _robbers_toNum_(config.calibrationMaxProb, 0.67);
   maxProb = Math.min(0.75, maxProb);
-  
+
   var minEdge = _robbers_toNum_(config.calibrationMinEdge, 0.08);
   var minProb = Math.min(maxProb - 0.05, impliedProb + minEdge);
   minProb = Math.max(0.30, minProb);
-  
+
   if (calibratedProb > maxProb) calibratedProb = maxProb;
   if (calibratedProb < minProb) calibratedProb = minProb;
-  
-  // ─── STEP 5: Convert to confidence percentage ──────────────────────────────
+
+  // STEP 5: confidence pct
   var confPct = Math.round(calibratedProb * 100);
   if (confPct < 50) confPct = 50;
   if (confPct > 95) confPct = 95;
-  
-  // ─── STEP 6: Recompute EV and edge from calibrated probability ─────────────
+
+  // STEP 6: EV / edge
   var ev = calibratedProb * (odds - 1) - (1 - calibratedProb);
   var edge = calibratedProb - impliedProb;
-  
+
   var maxEV = _robbers_toNum_(config.calibrationMaxEV, 0.85);
   ev = Math.max(-0.50, Math.min(maxEV, ev));
-  
-  // ─── STEP 7: Derive unified tier ───────────────────────────────────────────
-  var tier, tierDisplay;
-  
-  // Try system tier function first
+
+  // STEP 7: tier from getTierObject, display from unified formatter
+  var tier = null;
   if (typeof getTierObject === 'function') {
     try {
       var tierObj = getTierObject(confPct);
-      if (tierObj && tierObj.tier) {
-        tier = tierObj.tier;
-        tierDisplay = tierObj.display || _robbers_buildTierDisplay_(confPct, ev);
-      }
-    } catch (e) {
-      // Fall through to manual
-    }
+      if (tierObj && tierObj.tier) tier = tierObj.tier;
+    } catch (e) {}
   }
-  
-  // Manual fallback if system function unavailable
+
+  // Manual fallback only if getTierObject fails
   if (!tier) {
-    if (confPct >= 70) {
-      tier = 'ELITE';
-    } else if (confPct >= 63) {
-      tier = 'STRONG';
-    } else if (confPct >= 55) {
-      tier = 'MEDIUM';
-    } else {
-      tier = 'WEAK';
-    }
-    tierDisplay = _robbers_buildTierDisplay_(confPct, ev);
+    if (confPct >= 75) tier = 'ELITE';
+    else if (confPct >= 70) tier = 'STRONG';
+    else if (confPct >= 58) tier = 'MEDIUM';
+    else if (confPct >= 50) tier = 'WEAK';
+    else tier = 'SKIP';
   }
-  
-  // ─── STEP 8: Update robber object ──────────────────────────────────────────
+
+  var tierDisplay = _formatTierDisplay_(confPct, ev);
+
+  // STEP 8: write back
   robber.confidence = confPct;
   robber.ev = Math.round(ev * 10000) / 10000;
   robber.edge = Math.round(edge * 10000) / 10000;
+
   robber.tier = tier;
+  robber.tierCode = tier;
+  robber.tier_code = tier;
+
   robber.tierDisplay = tierDisplay;
+  robber.tier_display = tierDisplay;
+
   robber._calibratedProb = Math.round(calibratedProb * 1000) / 1000;
-  
-  _robbers_log_(fn, 
-    robber.pick + ' @' + odds.toFixed(2) + 
-    ' | Raw=' + rawConf.toFixed(1) + '% → Cal=' + confPct + 
+
+  _robbers_log_(fn,
+    robber.pick + ' @' + odds.toFixed(2) +
+    ' | Raw=' + rawConf + ' → Cal=' + confPct +
     '% | EV=' + (ev * 100).toFixed(1) + '% | Tier=' + tier
   );
-  
+
   return robber;
 }
 
