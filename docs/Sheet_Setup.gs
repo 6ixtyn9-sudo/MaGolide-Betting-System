@@ -2543,6 +2543,42 @@ function runFTOUPredictions() {
  *       conservative repair -> stage -> freshest repair
  * ======================================================================
  */
+/**
+ * Wipes all legacy forensic logs and accuracy reports to prevent data corruption
+ * after major script updates. Preserves headers but clears all data rows.
+ */
+function wipeLegacyLogs() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var logSheets = [
+    'Tier1_Predictions',
+    'Tier2_Log', 
+    'OU_Log',
+    'Stats_Tier2_Accuracy',
+    'Accuracy_Report',
+    'Analysis_Tier1',
+    'Stats_Tier2_Simulation'
+  ];
+  
+  Logger.log('===== INITIATING LOG WIPE =====');
+  var clearedCount = 0;
+  
+  logSheets.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (sheet) {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        var lastCol = Math.max(26, sheet.getLastColumn());
+        sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+        Logger.log('[WIPE] Cleared ' + (lastRow - 1) + ' rows from: ' + name);
+        clearedCount++;
+      }
+    }
+  });
+  
+  Logger.log('===== LOG WIPE COMPLETE (' + clearedCount + ' sheets) =====');
+  ss.toast('Wiped ' + clearedCount + ' legacy log sheets.', 'Log Manager');
+}
+
 function runTheWholeShebang() {
   return _runWholeShebang_({ includeTuners: false });
 }

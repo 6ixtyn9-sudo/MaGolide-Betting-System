@@ -1,4 +1,13 @@
 /**
+ * CRITICAL: Map single-underscore helper to double-underscore version to fix legacy reference errors.
+ * This is a defensive bridge to prevent "ReferenceError: __s5_getSheet is not defined" crashes.
+ */
+var __s5_getSheet = (typeof __s5_getSheet__ === 'function') ? __s5_getSheet__ : function(ss, name, silent) {
+  if (typeof getSheetInsensitive === 'function') return getSheetInsensitive(ss, name);
+  return (ss && typeof ss.getSheetByName === 'function') ? ss.getSheetByName(name) : null;
+};
+
+/**
  * ======================================================================
  * MODULE 5
  * PROJECT: Ma Golide
@@ -3179,10 +3188,12 @@ var __TEAM_VARIANCE_MAP_CACHE_SET = false;
 function _loadVarianceMap(ss) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   var varianceMap = {};
-  var statsSheet = (typeof __s5_getSheet__ === 'function') ? __s5_getSheet__(ss, 'Team_Variance', false) : ss.getSheetByName('Team_Variance') ||
-                   ss.getSheetByName('Variance_Map') ||
-                   ss.getSheetByName('Team_Stats') ||
-                   ss.getSheetByName('Stats');
+  var statsSheet = (typeof __s5_getSheet__ === 'function') ? __s5_getSheet__(ss, 'Team_Variance', false) : 
+                   ((typeof __s5_getSheet === 'function') ? __s5_getSheet(ss, 'Team_Variance', false) :
+                   (ss.getSheetByName('Team_Variance') ||
+                    ss.getSheetByName('Variance_Map') ||
+                    ss.getSheetByName('Team_Stats') ||
+                    ss.getSheetByName('Stats')));
   if (!statsSheet) return varianceMap;
 
   function normHead_(s) {

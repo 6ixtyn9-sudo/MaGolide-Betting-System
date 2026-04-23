@@ -3604,7 +3604,10 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
 
   if (!sheet) sheet = ss.insertSheet('Bet_Slips');
 
-  // Append-only: do not clear the sheet
+  // Clear sheet before writing (preserving headers)
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(23, sheet.getLastColumn())).clearContent();
+  }
   var lastRowBefore = sheet.getLastRow();
   try { sheet.getRange('A:W').setNumberFormat('@'); } catch (eFmt) {}
 
