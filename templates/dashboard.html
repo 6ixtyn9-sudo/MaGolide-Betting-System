@@ -172,6 +172,9 @@
         <button class="btn btn-gold btn-full" onclick="assayAll()" {% if not configured %}disabled{% endif %}>
           Run Full Assay on All
         </button>
+        <button class="btn btn-purple btn-full" onclick="syncScripts()" {% if not configured %}disabled{% endif %} title="Push local .gs files to all sheets">
+          Sync Latest .gs to Batch
+        </button>
       </div>
       <div class="job-log" id="job-log" style="margin-top:0.6rem;">Idle — waiting for manual trigger.</div>
     </div>
@@ -409,6 +412,16 @@
     const d = await r.json();
     if (d.error) { log('ERROR: ' + d.error); return; }
     log(`Assay job started: ${d.satellites} satellites`);
+    startJobPoll(d.job_id);
+  }
+
+  async function syncScripts() {
+    if (!confirm('This will PUSH the latest local .gs files to ALL satellite sheets. Continue?')) return;
+    log('Starting script sync...', true);
+    const r = await fetch('/api/sync-scripts', { method: 'POST' });
+    const d = await r.json();
+    if (d.error) { log('ERROR: ' + d.error); return; }
+    log(`Sync job started for ${d.satellites} satellites`);
     startJobPoll(d.job_id);
   }
 
