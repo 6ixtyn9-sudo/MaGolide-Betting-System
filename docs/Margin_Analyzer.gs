@@ -2509,29 +2509,21 @@ function runTier2Simulation(ss) {
  */
 function generateAccuracyReport(ssArg) {
   var ss = ssArg || null;
-  if (!ss) {
-    try { ss = SpreadsheetApp.getActiveSpreadsheet(); } catch (e) {}
-  }
-  if (!ss) {
-    Logger.log('[generateAccuracyReport] No spreadsheet available.');
-    return null;
-  }
+  if (!ss) { try { ss = SpreadsheetApp.getActiveSpreadsheet(); } catch (e) {} }
+  if (!ss) { Logger.log('[generateAccuracyReport] No spreadsheet available.'); return null; }
 
-  var ui = null;
-  try { ui = SpreadsheetApp.getUi(); } catch (e) {}
-
-  var SHEET_RESULTS = 'ResultsClean';
+  var SHEET_RESULTS  = 'ResultsClean';
   var SHEET_BETSLIPS = 'Bet_Slips';
-  var SHEET_T2ACC = 'Tier2_Accuracy';
-  var SHEET_REPORT = 'Accuracy_Report';
+  var SHEET_T2ACC    = 'Tier2_Accuracy';
+  var SHEET_REPORT   = 'Accuracy_Report';
 
   try {
-    // Safe wrappers (in case your utility names differ)
-    var _getSheetInsensitive = (typeof getSheetInsensitive === 'function')
+    // ── Safe wrappers ──────────────────────────────────────────────────────
+    var _getSheet = (typeof getSheetInsensitive === 'function')
       ? getSheetInsensitive
-      : function(ss_, name_) { return findSheet_(ss_, name_); };
+      : function(ss_, n) { return findSheet_(ss_, n); };
 
-    var _createHeaderMap = (typeof createHeaderMap === 'function')
+    var _hdrMap = (typeof createHeaderMap === 'function')
       ? createHeaderMap
       : function(row) {
           var m = {};
@@ -2542,564 +2534,150 @@ function generateAccuracyReport(ssArg) {
           return m;
         };
 
-    var resultsSheet = _getSheetInsensitive(ss, SHEET_RESULTS);
-    var betSheet = _getSheetInsensitive(ss, SHEET_BETSLIPS);
-    var t2AccSheet = _getSheetInsensitive(ss, SHEET_T2ACC);
+    // ── Require core sheets ────────────────────────────────────────────────
+    if (!_getSheet(ss, SHEET_RESULTS))  throw new Error('Missing sheet: "' + SHEET_RESULTS + '"');
+    if (!_getSheet(ss, SHEET_BETSLIPS)) throw new Error('Missing sheet: "' + SHEET_BETSLIPS + '"');
 
-    if (!resultsSheet) throw new Error('Missing required sheet: "' + SHEET_RESULTS + '"');
-    if (!betSheet) throw new Error('Missing required sheet: "' + SHEET_BETSLIPS + '"');
-
-    var resultsData = resultsSheet.getDataRange().getValues();
-    if (resultsData.length < 2) throw new Error(SHEET_RESULTS + ' has no data rows.');
-
-    var resH = _createHeaderMap(resultsData[0]);
-
-    // Quarter result columns
-    var qIdx = {};
-    for (var q = 1; q <= 4; q++) {
-      var idx = resH['q' + q];
-      if (idx !== undefined) qIdx['Q' + q] = idx;
-    }
-
-    // FT score column — canonical header map normalises "FT Score" → "ft_score"
-    // (spaces/hyphens replaced with underscores). Check the canonical form first,
-    // then fall back to the raw-lowercase variants for safety.
-    var ftIndex =
-      resH['ft_score']    !== undefined ? resH['ft_score']    :
-      resH['ft score']    !== undefined ? resH['ft score']    :
-      resH['FT Score']    !== undefined ? resH['FT Score']    :
-      resH['ftscore']     !== undefined ? resH['ftscore']     :
-      resH['final_score'] !== undefined ? resH['final_score'] :
-      resH['final score'] !== undefined ? resH['final score'] :
-      resH['full_time']   !== undefined ? resH['full_time']   :
-      resH['result']      !== undefined ? resH['result']      :
-      resH['ft']          !== undefined ? resH['ft']          :
-      resH['score']       !== undefined ? resH['score']       : undefined;
-
-    if (ftIndex === undefined) {
-      // Last-resort: scan all keys for anything that contains "ft" or "score"
-      var headerKeys = Object.keys(resH);
-      for (var hk = 0; hk < headerKeys.length; hk++) {
-        var hkv = headerKeys[hk];
-        if ((hkv.indexOf('ft') !== -1 || hkv.indexOf('score') !== -1) && hkv !== 'pred_score') {
-          ftIndex = resH[hkv];
-          Logger.log('[generateAccuracyReport] FT col fallback matched: "' + hkv + '" @ idx ' + ftIndex);
-          break;
-        }
-      }
-    }
-
-    if (ftIndex === undefined) {
-      throw new Error(SHEET_RESULTS + ' missing FT score column (expected "FT Score"/"FT"/"Score"). Headers found: ' + Object.keys(resH).join(', '));
-    }
-
-    // ------------------------
-    // Helpers
-    // ------------------------
-    var normalizeDate = function(dateValue) {
-      if (!dateValue) return null;
-      var tz = Session.getScriptTimeZone();
-
-      if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
-        return Utilities.formatDate(dateValue, tz, 'yyyy-MM-dd');
-      }
-
-      var raw = String(dateValue).trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-
-      var m = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
-      if (m) {
-        var d = parseInt(m[1], 10);
-        var mo = parseInt(m[2], 10);
-        var y = parseInt(m[3], 10);
-        if (y < 100) y += 2000;
-
-        // swap if looks like MM/DD
-        if (mo > 12 && d <= 12) { var t = d; d = mo; mo = t; }
-
-        var dd = d < 10 ? '0' + d : '' + d;
-        var mm = mo < 10 ? '0' + mo : '' + mo;
-        return y + '-' + mm + '-' + dd;
-      }
-
-      var dt = new Date(raw);
-      if (isNaN(dt.getTime())) return null;
-      return Utilities.formatDate(dt, tz, 'yyyy-MM-dd');
-    };
-
-    var formatDDMMYYYY = function(v) {
-      var n = normalizeDate(v);
-      if (!n) return String(v || '');
-      var parts = n.split('-');
-      return parts[2] + '/' + parts[1] + '/' + parts[0];
-    };
-
-    var normalizeTeam = function(teamStr) {
-      return String(teamStr || '')
-        .toLowerCase()
-        .replace(/\s*(w|\(w\)|women|u\d+)$/i, '')
-        .replace(/&/g, 'and')
-        .replace(/[^a-z0-9]/g, '');
-    };
-
-    var parseScore = function(scoreStr) {
-      var clean = String(scoreStr || '').trim();
-      if (!clean) return null;
-
-      var delimiters = [' - ', '-', ' – ', '–', ':'];
-      for (var d = 0; d < delimiters.length; d++) {
-        if (clean.indexOf(delimiters[d]) !== -1) {
-          var parts = clean.split(delimiters[d]);
-          if (parts.length >= 2) {
-            var a = parseInt(String(parts[0]).trim(), 10);
-            var b = parseInt(String(parts[1]).trim(), 10);
-            if (!isNaN(a) && !isNaN(b)) return [a, b];
-          }
-        }
-      }
-      return null;
-    };
-
-    var parseSlipMatch = function(s) {
-      s = String(s || '').trim();
-      if (!s) return null;
-
-      var parts = null;
-      if (/\s+vs\.?\s+/i.test(s)) parts = s.split(/\s+vs\.?\s+/i);
-      else if (/\s+v\s+/i.test(s)) parts = s.split(/\s+v\s+/i);
-      else if (/\s+-\s+/.test(s)) parts = s.split(/\s+-\s+/);
-
-      if (!parts || parts.length < 2) return null;
-      var home = String(parts[0] || '').trim();
-      var away = String(parts[1] || '').trim();
-      return (home && away) ? { home: home, away: away } : null;
-    };
-
-    var isBetSlipsHeaderRow = function(row) {
-      var lower = row.map(function(v) { return String(v || '').trim().toLowerCase(); });
-      // 10-col format: has match, pick, type
-      if (lower.indexOf('league') !== -1 && lower.indexOf('date') !== -1 &&
-          lower.indexOf('match') !== -1 && lower.indexOf('pick') !== -1 && lower.indexOf('type') !== -1) return true;
-      // 23-col format: has bet_record_id or (market + selection_text)
-      if (lower.indexOf('bet_record_id') !== -1) return true;
-      if (lower.indexOf('market') !== -1 && lower.indexOf('selection_text') !== -1) return true;
-      return false;
-    };
-
-    var isSkippableRow = function(row) {
-      var joined = row.map(function(v) { return String(v || '').trim(); }).join(' ').trim().toLowerCase();
-      if (!joined) return true;
-      if (/^#(error|ref|n\/a|value|div\/0|name)/i.test(String(row[0] || '').trim())) return true;
-      if (joined.indexOf('no bankers found') !== -1) return true;
-      if (joined.indexOf('ma golide bet slips') !== -1) return true;
-      if (joined.indexOf('total bankers') !== -1) return true;
-      if (joined.indexOf('=== ') !== -1) return true;
-      return false;
-    };
-
-    // Parse "Q3: A +10.5 ★ (76%) ★" => { quarter:'Q3', side:'A', margin:10.5 }
-    var parseSniperMarginPick = function(pickRaw) {
-      var s = String(pickRaw || '').trim().toUpperCase();
-      if (!s) return null;
-
-      // remove symbols + (..%) blocks
-      s = s.replace(/[●★•◆◇▪▫○◯⭐]/g, ' ');
-      s = s.replace(/\(.*?\)/g, ' ');
-      s = s.replace(/\s+/g, ' ').trim();
-
-      var m = s.match(/^Q\s*([1-4])\s*:\s*([HA])\s*([+-])?\s*(\d+(?:\.\d+)?)/i);
-      if (!m) return null;
-
-      var quarter = 'Q' + Number(m[1]);
-      var side = String(m[2]).toUpperCase();
-      var margin = parseFloat(m[4]);
-      if (!isFinite(margin)) return null;
-
-      return { quarter: quarter, side: side, margin: Math.abs(margin) };
-    };
-
-    // Side grading: ties count as MISS (matches your Tier2_Accuracy "Side Pushes = 0")
-    var gradeSide = function(homePts, awayPts, predSide) {
-      var h = Number(homePts), a = Number(awayPts);
-      if (!isFinite(h) || !isFinite(a)) return { outcome: 'PENDING', actualSide: '' };
-      if (h === a) return { outcome: 'MISS', actualSide: 'EVEN' };
-      var actual = (h > a) ? 'H' : 'A';
-      return { outcome: (actual === predSide ? 'HIT' : 'MISS'), actualSide: actual };
-    };
-
-    var pct = function(num) { return (isFinite(num) ? (num.toFixed(2) + '%') : 'N/A'); };
-
-    // ------------------------
-    // Build results lookup map: date|home|away => row
-    // ------------------------
-    var resultsMap = {};
-    for (var r = 1; r < resultsData.length; r++) {
-      var row = resultsData[r];
-
-      var d = normalizeDate(row[resH['date']]);
-      var h = normalizeTeam(row[resH['home']]);
-      var a = normalizeTeam(row[resH['away']]);
-      if (!d || !h || !a) continue;
-
-      resultsMap[d + '|' + h + '|' + a] = row;
-    }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Load enhanced historical games (for complete grading)
-    // ════════════════════════════════════════════════════════════════════
-    var games = loadHistoricalGamesEnhanced_(ss);
+    // ── Load data ──────────────────────────────────────────────────────────
+    var games        = loadHistoricalGamesEnhanced_(ss);
     var betSlipsData = loadBetSlipsComplete_(ss);
 
-    Logger.log('[generateAccuracyReport] Games loaded: ' + games.length);
+    Logger.log('[generateAccuracyReport] Games loaded: '   + games.length);
     Logger.log('[generateAccuracyReport] Bet_Slips rows: ' + betSlipsData.rows.length);
 
-    // ════════════════════════════════════════════════════════════════════
-    // Grade each bet type
-    // ════════════════════════════════════════════════════════════════════
+    // ── Grade all bet types ────────────────────────────────────────────────
     var reports = {};
-
     reports.SNIPER_MARGIN = gradeSniperMargin_(betSlipsData, games);
-    reports.SNIPER_OU = gradeSniperOU_(betSlipsData, games);
-    reports.BANKER = gradeBankers_(betSlipsData, games);
-    reports.ROBBER = gradeRobbers_(betSlipsData, games);
-    reports.FIRST_HALF = gradeFirstHalf_(betSlipsData, games);
-    reports.FT_OU = gradeFTOU_(betSlipsData, games);
-    reports.HIGH_QUARTER = gradeHighQuarter_(betSlipsData, games);
+    reports.SNIPER_OU     = gradeSniperOU_(betSlipsData, games);
+    reports.ROBBER        = gradeRobbers_(betSlipsData, games);
+    reports.FIRST_HALF    = gradeFirstHalf_(betSlipsData, games);
+    reports.FT_OU         = gradeFTOU_(betSlipsData, games);
+    reports.HIGH_QUARTER  = gradeHighQuarter_(betSlipsData, games);
+    // NOTE: BANKER omitted — no Banker bets are generated for this league.
+    //       Add reports.BANKER = gradeBankers_(...) if Bankers appear.
 
-    // ════════════════════════════════════════════════════════════════════
-    // Also run legacy SNIPER MARGIN grading (raw Bet_Slips → ResultsClean
-    // matching) for backward-compat with Tier2_Accuracy log
-    // ════════════════════════════════════════════════════════════════════
-    var betData = betSheet.getDataRange().getValues();
-    var betH = null;
-
-    var legacySideDetails = [];
-    var legacyFound = 0, legacyMatched = 0, legacyPending = 0, legacyHit = 0, legacyMiss = 0;
-
-    for (var i = 0; i < betData.length; i++) {
-      var bRow = betData[i];
-
-      if (isBetSlipsHeaderRow(bRow)) {
-        betH = _createHeaderMap(bRow);
-        continue;
-      }
-      if (!betH) continue;
-      if (isSkippableRow(bRow)) continue;
-
-      // Support both 10-col (Type) and 23-col (Market) Bet_Slips formats
-      var type = String(bRow[betH['type']] !== undefined ? bRow[betH['type']] : (bRow[betH['market']] || '')).trim();
-      if (!type) continue;
-
-      // SIDE bets: SNIPER MARGIN (10-col: 'SNIPER MARGIN', 23-col: 'SNIPER_MARGIN')
-      var typeU = type.toUpperCase();
-      if (typeU !== 'SNIPER MARGIN' && typeU !== 'SNIPER_MARGIN') continue;
-
-      legacyFound++;
-
-      // Required Bet_Slips columns (supports both 10-col and 23-col)
-      var league = String(bRow[betH['league']] || '').trim();
-      var dateRaw = bRow[betH['date']];
-      var timeRaw = bRow[betH['time']];
-      // 23-col: reconstruct match from Home + Away; 10-col: use Match column
-      var matchRaw = String(bRow[betH['match']] || '').trim();
-      if (!matchRaw && betH['home'] !== undefined && betH['away'] !== undefined) {
-        var _legH = String(bRow[betH['home']] || '').trim();
-        var _legA = String(bRow[betH['away']] || '').trim();
-        if (_legH && _legA) matchRaw = _legH + ' vs ' + _legA;
-      }
-      var pickRaw = String(bRow[betH['pick']] !== undefined ? bRow[betH['pick']] : (bRow[betH['selection_text']] || '')).trim();
-      var oddsRaw = bRow[betH['odds']];
-      var confRaw = betH['confidence'] !== undefined ? bRow[betH['confidence']] : bRow[betH['confidence_pct']];
-      var evRaw = bRow[betH['ev']];
-      var tierRaw = betH['tier'] !== undefined ? bRow[betH['tier']] : bRow[betH['tier_code']];
-
-      var matchTeams = parseSlipMatch(matchRaw);
-      var parsedBet = parseSniperMarginPick(pickRaw);
-      var dateKey = normalizeDate(dateRaw);
-
-      if (!matchTeams || !parsedBet || !dateKey) {
-        legacyPending++;
-        legacySideDetails.push([
-          league,
-          formatDDMMYYYY(dateRaw),
-          String(timeRaw || ''),
-          matchRaw,
-          pickRaw,
-          type,
-          String(oddsRaw || ''),
-          String(confRaw || ''),
-          String(evRaw || ''),
-          String(tierRaw || ''),
-          parsedBet ? parsedBet.quarter : '',
-          '', '', 'PENDING'
-        ]);
-        continue;
-      }
-
-      // Lookup results (try both orders)
-      var slipHome = normalizeTeam(matchTeams.home);
-      var slipAway = normalizeTeam(matchTeams.away);
-
-      var k1 = dateKey + '|' + slipHome + '|' + slipAway;
-      var k2 = dateKey + '|' + slipAway + '|' + slipHome;
-
-      var resRow = resultsMap[k1];
-      var swapped = false;
-      if (!resRow && resultsMap[k2]) { resRow = resultsMap[k2]; swapped = true; }
-
-      if (!resRow) {
-        legacyPending++;
-        legacySideDetails.push([
-          league,
-          formatDDMMYYYY(dateRaw),
-          String(timeRaw || ''),
-          matchRaw,
-          pickRaw,
-          type,
-          String(oddsRaw || ''),
-          String(confRaw || ''),
-          String(evRaw || ''),
-          String(tierRaw || ''),
-          parsedBet.quarter,
-          '', '', 'PENDING'
-        ]);
-        continue;
-      }
-
-      var quarterCol = qIdx[parsedBet.quarter];
-      if (quarterCol === undefined) {
-        legacyPending++;
-        legacySideDetails.push([
-          league,
-          formatDDMMYYYY(dateRaw),
-          String(timeRaw || ''),
-          matchRaw,
-          pickRaw,
-          type,
-          String(oddsRaw || ''),
-          String(confRaw || ''),
-          String(evRaw || ''),
-          String(tierRaw || ''),
-          parsedBet.quarter,
-          '', '', 'PENDING'
-        ]);
-        continue;
-      }
-
-      var qScoreStr = String(resRow[quarterCol] || '').trim();
-      var qScore = parseScore(qScoreStr);
-
-      if (!qScore) {
-        legacyPending++;
-        legacySideDetails.push([
-          league,
-          formatDDMMYYYY(dateRaw),
-          String(timeRaw || ''),
-          matchRaw,
-          pickRaw,
-          type,
-          String(oddsRaw || ''),
-          String(confRaw || ''),
-          String(evRaw || ''),
-          String(tierRaw || ''),
-          parsedBet.quarter,
-          qScoreStr,
-          '',
-          'PENDING'
-        ]);
-        continue;
-      }
-
-      // Apply swap if results home/away order was reversed vs slip
-      var slipHomePts = swapped ? qScore[1] : qScore[0];
-      var slipAwayPts = swapped ? qScore[0] : qScore[1];
-
-      var g = gradeSide(slipHomePts, slipAwayPts, parsedBet.side);
-      legacyMatched++;
-
-      if (g.outcome === 'HIT') legacyHit++;
-      else if (g.outcome === 'MISS') legacyMiss++;
-      else legacyPending++;
-
-      legacySideDetails.push([
-        league,
-        formatDDMMYYYY(dateRaw),
-        String(timeRaw || ''),
-        matchRaw,
-        pickRaw,
-        type,
-        String(oddsRaw || ''),
-        String(confRaw || ''),
-        String(evRaw || ''),
-        String(tierRaw || ''),
-        parsedBet.quarter,
-        slipHomePts + ' - ' + slipAwayPts,
-        g.actualSide,
-        g.outcome === 'HIT' ? '✅ HIT' : (g.outcome === 'MISS' ? '❌ MISS' : 'PENDING')
-      ]);
-    }
-
-    var legacyAttempts = legacyHit + legacyMiss;
-    var legacyHitRate = legacyAttempts > 0 ? pct((legacyHit / legacyAttempts) * 100) : 'N/A';
-
-    // ------------------------
-    // Read Tier2_Accuracy Metric/Value block (optional)
-    // ------------------------
-    var t2Metrics = [];
+    // ── Optional Tier2_Accuracy metrics ───────────────────────────────────
+    var t2Metrics  = [];
+    var t2AccSheet = _getSheet(ss, SHEET_T2ACC);
     if (t2AccSheet) {
-      var t2 = t2AccSheet.getDataRange().getValues();
+      var t2    = t2AccSheet.getDataRange().getValues();
       var start = -1;
       for (var r2 = 0; r2 < Math.min(t2.length, 120); r2++) {
         if (String(t2[r2][0] || '').trim().toLowerCase() === 'metric' &&
             String(t2[r2][1] || '').trim().toLowerCase() === 'value') {
-          start = r2 + 1;
-          break;
+          start = r2 + 1; break;
         }
       }
       if (start !== -1) {
         for (var r3 = start; r3 < t2.length; r3++) {
           var mKey = String(t2[r3][0] || '').trim();
-          var mVal = String(t2[r3][1] || '').trim();
-          if (!mKey && !mVal) break;
           if (!mKey) break;
-          t2Metrics.push([mKey, mVal]);
+          t2Metrics.push([mKey, String(t2[r3][1] || '').trim()]);
         }
       }
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Compute overall totals across all bet types
-    // ════════════════════════════════════════════════════════════════════
+    // ── Overall totals (excl BANKER if empty) ─────────────────────────────
     var totalBets = 0, totalHits = 0, totalMisses = 0;
     var reportKeys = Object.keys(reports);
     for (var rk = 0; rk < reportKeys.length; rk++) {
       var rep = reports[reportKeys[rk]];
-      totalBets += rep.matched;
-      totalHits += rep.hits;
+      totalBets   += rep.matched;
+      totalHits   += rep.hits;
       totalMisses += rep.misses;
     }
     var overallRate = totalBets > 0 ? (totalHits / totalBets * 100).toFixed(2) : '0.00';
 
-    // ════════════════════════════════════════════════════════════════════
-    // Write Accuracy_Report (unified)
-    // ════════════════════════════════════════════════════════════════════
-    var reportSheet = _getSheetInsensitive(ss, SHEET_REPORT) || ss.insertSheet(SHEET_REPORT);
-    reportSheet.clear();
-
-    // Force TEXT format across a generous area to prevent 1 => 100%
-    reportSheet.getRange('A:Z').setNumberFormat('@');
-
-    var out = [];
+    // ── Build output ───────────────────────────────────────────────────────
     var maxCols = 14;
+    var out     = [];
 
-    out.push(['MA GOLIDE COMPLETE ACCURACY REPORT', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+    var blank = function() {
+      var r = []; while (r.length < maxCols) r.push(''); return r;
+    };
+    var row14 = function(vals) {
+      var r = vals.slice();
+      while (r.length < maxCols) r.push('');
+      return r.slice(0, maxCols);
+    };
 
-    // ── Overall summary ──
-    out.push(['═══ OVERALL SUMMARY ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Total Bets Graded:', String(totalBets), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Total Hits:', String(totalHits), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Total Misses:', String(totalMisses), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Overall Hit Rate:', overallRate + '%', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+    // Title
+    out.push(row14(['MA GOLIDE COMPLETE ACCURACY REPORT']));
+    out.push(row14(['Generated:', new Date().toLocaleString()]));
+    out.push(blank());
 
-    // ── Per-type summary table ──
-    out.push(['═══ BY BET TYPE ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Bet Type', 'Found', 'Matched', 'Hits', 'Misses', 'Pushes/Ties', 'Hit Rate', '', '', '', '', '', '', '']);
+    // Overall summary
+    out.push(row14(['═══ OVERALL SUMMARY ═══']));
+    out.push(row14(['Total Bets Graded:', String(totalBets)]));
+    out.push(row14(['Total Hits:',        String(totalHits)]));
+    out.push(row14(['Total Misses:',      String(totalMisses)]));
+    out.push(row14(['Overall Hit Rate:',  overallRate + '%']));
+    out.push(blank());
+
+    // Per-type summary table
+    out.push(row14(['═══ BY BET TYPE ═══']));
+    out.push(['Bet Type','Found','Matched','Hits','Misses','Pushes/Ties','Hit Rate','','','','','','','']);
     for (var rk2 = 0; rk2 < reportKeys.length; rk2++) {
       var rpt = reports[reportKeys[rk2]];
       if (rpt.found === 0) continue;
-      out.push([
+      out.push(row14([
         rpt.name,
         String(rpt.found),
         String(rpt.matched),
         String(rpt.hits),
         String(rpt.misses),
         String(rpt.pushes || rpt.ties || 0),
-        rpt.hitRate.toFixed(2) + '%',
-        '', '', '', '', '', '', ''
-      ]);
+        rpt.hitRate.toFixed(2) + '%'
+      ]));
     }
-    out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+    out.push(blank());
 
-    // ── Detailed sections for each bet type ──
+    // Detailed section per bet type
     for (var rk3 = 0; rk3 < reportKeys.length; rk3++) {
       var report = reports[reportKeys[rk3]];
+      if (report.found === 0) continue;
 
-      if (report.found === 0) continue; // Skip empty sections
-
-      // Section header
-      out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['═══ ' + report.name + ' — ' + report.description + ' ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['Source sheet:', SHEET_BETSLIPS, '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['Total bets found:', String(report.found), '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['Matched to ResultsClean:', String(report.matched), '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['Hits:', String(report.hits), '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['Misses:', String(report.misses), '', '', '', '', '', '', '', '', '', '', '', '']);
-
+      out.push(blank());
+      out.push(row14(['═══ ' + report.name + ' — ' + report.description + ' ═══']));
+      out.push(row14(['Source sheet:', SHEET_BETSLIPS]));
+      out.push(row14(['Total bets found:', String(report.found)]));
+      out.push(row14(['Matched to ResultsClean:', String(report.matched)]));
+      out.push(row14(['Hits:', String(report.hits)]));
+      out.push(row14(['Misses:', String(report.misses)]));
       if (report.pushes !== undefined) {
-        out.push(['Pushes/Ties:', String(report.pushes || report.ties || 0), '', '', '', '', '', '', '', '', '', '', '', '']);
+        out.push(row14(['Pushes/Ties:', String(report.pushes || report.ties || 0)]));
       }
+      out.push(row14(['Hit Rate (excl pushes/ties):', report.hitRate.toFixed(2) + '%']));
+      out.push(blank());
 
-      out.push(['Hit Rate (excl pushes/ties):', report.hitRate.toFixed(2) + '%', '', '', '', '', '', '', '', '', '', '', '', '']);
-      out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-
-      // Detail header
       if (report.details.length > 0) {
-        out.push(['--- BET DETAILS ---', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-
-        // Build header based on bet type
-        var detailHeader = buildDetailHeader_(reportKeys[rk3]);
-        out.push(detailHeader);
-
-        // Add each detail row
+        out.push(row14(['--- BET DETAILS ---']));
+        out.push(buildDetailHeader_(reportKeys[rk3]));
         for (var dd = 0; dd < report.details.length; dd++) {
-          var detailRow = buildDetailRow_(reportKeys[rk3], report.details[dd]);
-          out.push(detailRow);
+          out.push(buildDetailRow_(reportKeys[rk3], report.details[dd]));
         }
       }
-
-      out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+      out.push(blank());
     }
 
-    // ── Legacy SNIPER MARGIN cross-check (date-keyed matching) ──
-    out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['═══ LEGACY SNIPER MARGIN CROSS-CHECK (date-keyed) ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Source sheet:', SHEET_BETSLIPS, '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Total side bets found (SNIPER MARGIN):', String(legacyFound), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Matched to ResultsClean:', String(legacyMatched), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Hits:', String(legacyHit), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Misses:', String(legacyMiss), '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Hit Rate (excl ties; ties count as MISS):', legacyHitRate, '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-
-    out.push(['--- LEGACY SIDE BET DETAILS (includes Bet_Slips columns) ---', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push([
-      'League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier',
-      'Quarter', 'Actual Q Score', 'Actual Side', 'Outcome'
-    ]);
-    for (var ld = 0; ld < legacySideDetails.length; ld++) {
-      out.push(legacySideDetails[ld]);
-    }
-
-    out.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-
-    // ── Tier2_Accuracy log summary ──
-    out.push(['═══ Tier2_Accuracy (Log Summary) ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    out.push(['Source sheet:', t2AccSheet ? SHEET_T2ACC : 'NOT FOUND', '', '', '', '', '', '', '', '', '', '', '', '']);
+    // Tier2_Accuracy log summary
+    out.push(blank());
+    out.push(row14(['═══ Tier2_Accuracy (Log Summary) ═══']));
+    out.push(row14(['Source sheet:', t2AccSheet ? SHEET_T2ACC : 'NOT FOUND']));
     if (t2Metrics.length) {
-      out.push(['Metric', 'Value', '', '', '', '', '', '', '', '', '', '', '', '']);
+      out.push(row14(['Metric', 'Value']));
       for (var tm = 0; tm < t2Metrics.length; tm++) {
-        var tmRow = [t2Metrics[tm][0], t2Metrics[tm][1]];
-        while (tmRow.length < maxCols) tmRow.push('');
-        out.push(tmRow);
+        out.push(row14([t2Metrics[tm][0], t2Metrics[tm][1]]));
       }
     } else {
-      out.push(['(No Metric/Value block found)', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+      out.push(row14(['(No Metric/Value block found in Tier2_Accuracy)']));
     }
 
-    // Rectangular write
+    // ── Write to sheet ─────────────────────────────────────────────────────
+    var reportSheet = _getSheet(ss, SHEET_REPORT) || ss.insertSheet(SHEET_REPORT);
+    reportSheet.clear();
+    reportSheet.getRange('A:Z').setNumberFormat('@'); // force TEXT (no 1 → 100%)
+
     var rect = out.map(function(r) {
       var rr = r.slice();
       while (rr.length < maxCols) rr.push('');
@@ -3108,13 +2686,13 @@ function generateAccuracyReport(ssArg) {
 
     reportSheet.getRange(1, 1, rect.length, maxCols).setValues(rect);
 
-    // Formatting polish (still text)
-    reportSheet.getRange(1, 1, 1, maxCols).setFontWeight('bold').setFontSize(14).setBackground('#4a86e8').setFontColor('white');
+    // Formatting
+    reportSheet.getRange(1, 1, 1, maxCols)
+      .setFontWeight('bold').setFontSize(14)
+      .setBackground('#4a86e8').setFontColor('white');
 
-    // Format section headers and detail headers
     for (var fi = 0; fi < rect.length; fi++) {
       var cell = String(rect[fi][0]);
-
       if (cell.indexOf('═══') !== -1) {
         reportSheet.getRange(fi + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#d9ead3');
       }
@@ -3134,21 +2712,17 @@ function generateAccuracyReport(ssArg) {
     return reports;
 
   } catch (err) {
-    Logger.log('ERROR: ' + err.message);
-    Logger.log(err.stack);
-    ss.toast('Accuracy Report Error: ' + err.message, 'Ma Golide', 10);
+    Logger.log('ERROR in generateAccuracyReport: ' + err.message + '\n' + err.stack);
+    try { ss.toast('Accuracy Report Error: ' + err.message, 'Ma Golide', 10); } catch(e2) {}
     return null;
   }
 }
 
+// Aliases
+function generateCompleteAccuracyReport(ss) { return generateAccuracyReport(ss); }
+function runCompleteAccuracyReport() { generateAccuracyReport(SpreadsheetApp.getActiveSpreadsheet()); }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ALIAS: generateCompleteAccuracyReport → delegates to generateAccuracyReport
-// ═══════════════════════════════════════════════════════════════════════════════
 
-function generateCompleteAccuracyReport(ss) {
-  return generateAccuracyReport(ss);
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOAD HISTORICAL GAMES - Enhanced
@@ -3471,113 +3045,150 @@ function gradeSniperMargin_(betSlipsData, games) {
 // GRADE: SNIPER O/U
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. gradeSniperOU_  — BUG-1 + BUG-6 fixed
+//
+// BUG-1: matched++ moved AFTER all validation (was before pick parse).
+//
+// BUG-6 (ROOT CAUSE of "8 found, 5 matched"):
+//   The old filter accepted any row whose combined type+section+pick string
+//   contained "O/U" OR "OVER/UNDER" AND matched /Q[1-4]/i. This pulled in
+//   SNIPER_MARGIN rows whose pick is "Q3: H +5.0" — the "Q3" passes the
+//   quarter test but the pick has no OVER/UNDER keyword, so dirMatch fails,
+//   and those 3 rows exit after findMatchingGame_ (before matched++, after
+//   BUG-1 fix). They still inflate `found` from 5 → 8.
+//
+//   FIX: The filter now REQUIRES typeU === 'SNIPER_OU' (exact match, 23-col)
+//   or typeU === 'SNIPER' with a Q1-Q4 period AND an O/U keyword in the pick.
+//   SNIPER_MARGIN rows are explicitly excluded even before the fallback path.
+//   Result: found=5, matched=5 — exactly matching buildOUAccuracyReport.
+// ═══════════════════════════════════════════════════════════════════════════
+
 function gradeSniperOU_(betSlipsData, games) {
   var result = {
-    name: 'SNIPER O/U',
+    name:    'SNIPER O/U',
     description: 'Quarter Over/Under Totals',
-    found: 0,
+    found:   0,
     matched: 0,
-    hits: 0,
-    misses: 0,
-    pushes: 0,
+    hits:    0,
+    misses:  0,
+    pushes:  0,
     hitRate: 0,
     details: []
   };
-  
-  // Filter for quarter O/U bets (supports 23-col Market = SNIPER_OU/SNIPER and legacy Type)
+
+  // ── BUG-6 FIX: tight filter — only genuine O/U rows ───────────────────
   var ouBets = betSlipsData.rows.filter(function(row) {
-    var typeU = String(row.type || '').toUpperCase();
-    if (typeU === 'SNIPER_OU') return /Q[1-4]/i.test(row.pick || '');
-    // 23-col format: Market='SNIPER', Period='Q1'-'Q4' → quarter O/U
+    var typeU = String(row.type || '').toUpperCase().replace(/-/g, '_');
+
+    // 23-col canonical: Market = SNIPER_OU
+    if (typeU === 'SNIPER_OU') return true;
+
+    // Explicitly exclude margin / other types regardless of content
+    if (typeU === 'SNIPER_MARGIN' || typeU === 'FT_OU'  || typeU === 'BANKER' ||
+        typeU === 'ROBBER'        || typeU === 'FIRST_HALF_1X2') return false;
+
+    // 23-col SNIPER with Quarter period AND a direction keyword in the pick
     if (typeU === 'SNIPER') {
       var period = String(row.period || '').toUpperCase();
-      if (/^Q[1-4]$/.test(period)) return true;
+      if (/^Q[1-4]$/.test(period)) {
+        var pickU = String(row.pick || '').toUpperCase();
+        return /\b(OVER|UNDER)\b/.test(pickU) || /\bO\s*\d/.test(pickU) || /\bU\s*\d/.test(pickU);
+      }
     }
-    if (typeU === 'SNIPER_MARGIN' || typeU === 'FT_OU' || typeU === 'BANKER' ||
-        typeU === 'ROBBER' || typeU === 'FIRST_HALF_1X2') return false;
-    var combined = (typeU + ' ' + String(row.section || '').toUpperCase() + ' ' + String(row.pick || '').toUpperCase());
-    return (combined.indexOf('O/U') !== -1 || combined.indexOf('OU') !== -1 ||
-            combined.indexOf('OVER') !== -1 || combined.indexOf('UNDER') !== -1) &&
-           /Q[1-4]/i.test(combined);
+
+    // Legacy free-text fallback: section/pick must contain an O/U keyword
+    // AND a quarter tag AND must NOT look like a margin pick (has +/- spread)
+    var combined = typeU + ' ' + String(row.section || '').toUpperCase() +
+                   ' '  + String(row.pick    || '').toUpperCase();
+    var hasOU      = /\b(OVER|UNDER|O\/U)\b/.test(combined);
+    var hasQuarter = /Q[1-4]/.test(combined);
+    var isSpread   = /Q[1-4]:\s*[HA]\s*[+-]\d/.test(combined); // "Q1: A +4.5"
+
+    return hasOU && hasQuarter && !isSpread;
   });
-  
+
   result.found = ouBets.length;
-  
+
   ouBets.forEach(function(bet) {
+    // ── Match to a historical game ─────────────────────────────────────
     var game = findMatchingGame_(games, bet.homeNorm, bet.awayNorm);
     if (!game) return;
-    
-    result.matched++;
-    
-    // Parse pick: "Q1 UNDER 55.5" or "Q2: O 48.5"
-    var pickUpper = bet.pick.toUpperCase();
-    var qMatch = pickUpper.match(/Q([1-4])/);
-    var dirMatch = pickUpper.match(/(OVER|UNDER|O|U)\s*(\d+\.?\d*)/);
-    
-    // Fallback: period in separate column, direction/line in 23-col structured columns
+
+    // ── Parse quarter ──────────────────────────────────────────────────
+    var pickUpper = String(bet.pick || '').toUpperCase();
+    var qMatch    = pickUpper.match(/Q([1-4])/);
+
+    // Fallback: period column (23-col format)
     if (!qMatch) {
       var prd = String(bet.period || '').toUpperCase();
       if (/^Q[1-4]$/.test(prd)) qMatch = [prd, prd[1]];
     }
-    
-    var quarter, direction, line;
-    if (qMatch) quarter = 'Q' + qMatch[1];
+
+    // ── Parse direction + line ─────────────────────────────────────────
+    var direction, line;
+
+    // Primary: parse from pick text "Q1: OVER 40.0" / "Q1 O 40" / "OVER 40.0"
+    var dirMatch = pickUpper.match(/\b(OVER|UNDER)\s*(\d+\.?\d*)/);
+    if (!dirMatch) {
+      dirMatch = pickUpper.match(/\b([OU])\s+(\d+\.?\d*)/);  // "O 40", "U 55.5"
+    }
     if (dirMatch) {
-      direction = dirMatch[1] === 'O' ? 'OVER' : dirMatch[1] === 'U' ? 'UNDER' : dirMatch[1];
-      line = parseFloat(dirMatch[2]);
-    } else {
-      // 23-col fallback: selection_side = 'OVER'/'UNDER', selection_line = numeric
+      var raw = dirMatch[1];
+      direction = (raw === 'O') ? 'OVER' : (raw === 'U') ? 'UNDER' : raw;
+      line      = parseFloat(dirMatch[2]);
+    }
+
+    // Fallback: 23-col structured columns (Selection_Side / Selection_Line)
+    if (!direction || !isFinite(line)) {
       var selSide = String(getColValue_(bet.rawRow, bet.headerMap,
-          ['selection_side', 'selectionside', 'side', 'dir']) || '').toUpperCase();
+        ['selection_side', 'selectionside', 'side', 'dir']) || '').toUpperCase();
       var selLine = parseFloat(getColValue_(bet.rawRow, bet.headerMap,
-          ['selection_line', 'selectionline', 'line']) || '');
-      if (selSide && isFinite(selLine)) {
-        direction = selSide;
-        line = selLine;
-      }
+        ['selection_line', 'selectionline', 'line']) || '');
+      if (selSide && isFinite(selLine)) { direction = selSide; line = selLine; }
     }
-    
-    if (!quarter || !direction || !isFinite(line)) return;
-    
-    var qScore = game.qScores[quarter];
+
+    // BUG-1 FIX: only increment matched AFTER all fields validated
+    if (!qMatch || !direction || !isFinite(line)) return;
+
+    var quarter = 'Q' + qMatch[1];
+    var qScore  = game.qScores[quarter];
     if (!qScore) return;
-    
-    var actualTotal = qScore.home + qScore.away;
+
+    result.matched++;
+
+    // ── Grade ──────────────────────────────────────────────────────────
+    var actualTotal  = qScore.home + qScore.away;
     var actualResult = actualTotal > line ? 'OVER' : (actualTotal < line ? 'UNDER' : 'PUSH');
-    
+
     var outcome = 'MISS';
-    if (actualResult === 'PUSH') {
-      outcome = 'PUSH';
-      result.pushes++;
-    } else if (direction === actualResult) {
-      outcome = 'HIT';
-      result.hits++;
-    } else {
-      result.misses++;
-    }
-    
+    if (actualResult === 'PUSH')            { outcome = 'PUSH';  result.pushes++; }
+    else if (direction === actualResult)    { outcome = 'HIT';   result.hits++;   }
+    else                                    {                     result.misses++; }
+
     result.details.push({
-      league: bet.league || game.league,
-      date: bet.date,
-      time: bet.time,
-      match: bet.match,
-      pick: bet.pick,
-      type: bet.type || 'SNIPER O/U',
-      odds: bet.odds || '-',
-      confidence: bet.confidence,
-      ev: bet.ev || '-',
-      tier: bet.tier,
-      quarter: quarter,
-      line: line,
-      actualTotal: actualTotal,
-      actualResult: actualResult,
-      outcome: outcome === 'HIT' ? '✅ HIT' : (outcome === 'PUSH' ? '🟡 PUSH' : '❌ MISS')
+      league:       bet.league || game.league,
+      date:         bet.date,
+      time:         bet.time,
+      match:        bet.match,
+      pick:         bet.pick,
+      type:         bet.type || 'SNIPER O/U',
+      odds:         bet.odds || '-',
+      confidence:   bet.confidence,
+      ev:           bet.ev || '-',
+      tier:         bet.tier,
+      quarter:      quarter,
+      line:         line,
+      actualTotal:  actualTotal,
+      actualResult: actualResult,          // BUG-3 FIX
+      outcome:      outcome === 'HIT'  ? '✅ HIT'  :
+                    outcome === 'PUSH' ? '🟡 PUSH' : '❌ MISS'
     });
   });
-  
+
   var graded = result.matched - result.pushes;
   result.hitRate = graded > 0 ? (result.hits / graded * 100) : 0;
-  
+
   return result;
 }
 
@@ -3954,120 +3565,47 @@ function gradeHighQuarter_(betSlipsData, games) {
 // WRITE UNIFIED ACCURACY REPORT (kept for backward compat — called internally)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function writeUnifiedAccuracyReport_(ss, reports) {
-  var sheetName = 'Accuracy_Report';
-  var sh = findSheet_(ss, sheetName);
-  if (!sh) {
-    sh = ss.insertSheet(sheetName);
-  }
-  sh.clear();
-  
-  var output = [];
-  var rowIndex = 0;
-  
-  // HEADER
-  output.push(['MA GOLIDE ACCURACY REPORT', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-  output.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '', '', '', '', '', '', '', '']);
-  output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-  
-  // Process each report type
-  Object.keys(reports).forEach(function(key) {
-    var report = reports[key];
-    
-    if (report.found === 0) return; // Skip empty sections
-    
-    // Section header
-    output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['═══ ' + report.name + ' — ' + report.description + ' ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Source sheet:', 'Bet_Slips', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Total bets found:', report.found, '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Matched to ResultsClean:', report.matched, '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Hits:', report.hits, '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Misses:', report.misses, '', '', '', '', '', '', '', '', '', '', '', '']);
-    
-    if (report.pushes !== undefined) {
-      output.push(['Pushes/Ties:', report.pushes || report.ties || 0, '', '', '', '', '', '', '', '', '', '', '', '']);
-    }
-    
-    output.push(['Hit Rate (excl pushes/ties):', report.hitRate.toFixed(2) + '%', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    
-    // Detail header
-    if (report.details.length > 0) {
-      output.push(['--- BET DETAILS ---', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-      
-      // Build header based on bet type
-      var detailHeader = buildDetailHeader_(key);
-      output.push(detailHeader);
-      
-      // Add each detail row
-      report.details.forEach(function(d) {
-        var detailRow = buildDetailRow_(key, d);
-        output.push(detailRow);
-      });
-    }
-    
-    output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-  });
-  
-  // Write to sheet
-  var maxCols = 14;
-  var paddedOutput = output.map(function(row) {
-    while (row.length < maxCols) row.push('');
-    return row.slice(0, maxCols);
-  });
-  
-  sh.getRange(1, 1, paddedOutput.length, maxCols).setValues(paddedOutput);
-  
-  // Formatting
-  sh.getRange(1, 1, 1, maxCols).setFontWeight('bold').setFontSize(14).setBackground('#4a86e8').setFontColor('white');
-  
-  // Format section headers
-  for (var i = 0; i < paddedOutput.length; i++) {
-    var cell = String(paddedOutput[i][0]);
-    
-    if (cell.indexOf('═══') !== -1) {
-      sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#d9ead3');
-    }
-    if (cell === '--- BET DETAILS ---') {
-      sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#e8e8e8');
-    }
-    if (cell === 'League') {
-      sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#f3f3f3');
-    }
-  }
-  
-  sh.autoResizeColumns(1, maxCols);
-  
-  Logger.log('[writeUnifiedAccuracyReport_] Report written to ' + sheetName);
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// writeUnifiedAccuracyReport_ REMOVED — dead duplicate (BUG-5).
+// Any call site → use generateAccuracyReport(ss) directly.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. buildDetailHeader_  — BUG-2 fixed (SNIPER_OU gets Result col)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function buildDetailHeader_(betType) {
   switch (betType) {
     case 'SNIPER_MARGIN':
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Quarter', 'Actual Q Score', 'Actual Side', 'Outcome'];
+      return ['League','Date','Time','Match','Pick','Type','Odds','Confidence','EV','Tier','Quarter','Actual Q Score','Actual Side','Outcome'];
     case 'SNIPER_OU':
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Quarter', 'Line', 'Actual Total', 'Outcome'];
+      // 14 cols: drop "Time" to fit Result between Actual Total and Outcome
+      return ['League','Date','Match','Pick','Type','Odds','Confidence','EV','Tier','Quarter','Line','Actual Total','Result','Outcome'];
     case 'BANKER':
     case 'ROBBER':
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Predicted', 'Actual Score', 'Actual Winner', 'Outcome'];
+      return ['League','Date','Time','Match','Pick','Type','Odds','Confidence','EV','Tier','Predicted','Actual Score','Actual Winner','Outcome'];
     case 'FIRST_HALF':
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Predicted', 'Actual 1H Score', 'Actual Result', 'Outcome'];
+      return ['League','Date','Time','Match','Pick','Type','Odds','Confidence','EV','Tier','Predicted','Actual 1H Score','Actual Result','Outcome'];
     case 'FT_OU':
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Line', 'Actual Total', 'Result', 'Outcome'];
+      return ['League','Date','Time','Match','Pick','Type','Odds','Confidence','EV','Tier','Line','Actual Total','Result','Outcome'];
     case 'HIGH_QUARTER':
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Predicted', 'Q Totals', 'Actual Highest', 'Outcome'];
+      return ['League','Date','Time','Match','Pick','Type','Odds','Confidence','EV','Tier','Predicted','Q Totals','Actual Highest','Outcome'];
     default:
-      return ['League', 'Date', 'Time', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Detail1', 'Detail2', 'Detail3', 'Outcome'];
+      return ['League','Date','Time','Match','Pick','Type','Odds','Confidence','EV','Tier','Detail1','Detail2','Detail3','Outcome'];
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. buildDetailRow_  — BUG-3 fixed (SNIPER_OU emits actualResult)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function buildDetailRow_(betType, d) {
   switch (betType) {
     case 'SNIPER_MARGIN':
       return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.quarter, d.actualQScore, d.actualSide, d.outcome];
     case 'SNIPER_OU':
-      return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.quarter, d.line, d.actualTotal, d.outcome];
+      // No "Time" col (matches header); d.actualResult now populated (BUG-3)
+      return [d.league, d.date, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.quarter, d.line, d.actualTotal, d.actualResult, d.outcome];
     case 'BANKER':
     case 'ROBBER':
       return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.predictedWinner, d.actualScore, d.actualWinner, d.outcome];
@@ -4076,8 +3614,9 @@ function buildDetailRow_(betType, d) {
     case 'FT_OU':
       return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.line, d.actualTotal, d.actualResult, d.outcome];
     case 'HIGH_QUARTER':
-      return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.predicted, 
-              'Q1:' + d.q1Total + ' Q2:' + d.q2Total + ' Q3:' + d.q3Total + ' Q4:' + d.q4Total, d.actualHighest, d.outcome];
+      return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, d.predicted,
+              'Q1:' + d.q1Total + ' Q2:' + d.q2Total + ' Q3:' + d.q3Total + ' Q4:' + d.q4Total,
+              d.actualHighest, d.outcome];
     default:
       return [d.league, d.date, d.time, d.match, d.pick, d.type, d.odds, d.confidence, d.ev, d.tier, '', '', '', d.outcome];
   }
