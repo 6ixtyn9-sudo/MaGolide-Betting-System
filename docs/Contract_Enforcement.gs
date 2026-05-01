@@ -2587,7 +2587,8 @@ if (config.includeHighestQuarter) {
             hqDominantConf:    isDomMatch ? toNum(hqDominant.confidence, 0) : null,
             hqDominantSource:  isDomMatch ? (hqDominant.source || '') : null,
             hqBoostApplied:    isDomMatch ? true : false,
-            originalConfidence: ouConf0
+            originalConfidence: ouConf0,
+            lineSource: isFinite(bookLine) ? 'BOOK' : 'LEAGUE_STATS'
           });
 
           if (isDomMatch) diag.hqDominant.boostedOU++;
@@ -2635,7 +2636,8 @@ if (config.includeHighestQuarter) {
             hqDominantConf:    bdDomMatch ? toNum(hqDominant.confidence, 0) : null,
             hqDominantSource:  bdDomMatch ? (hqDominant.source || '') : null,
             hqBoostApplied:    bdDomMatch ? true : false,
-            originalConfidence: bdConf0
+            originalConfidence: bdConf0,
+            lineSource: isFinite(bd.line) ? 'BOOK' : 'LEAGUE_STATS'
           });
         }
       }
@@ -2742,7 +2744,8 @@ if (config.includeHighestQuarter) {
               muSource: muSrc,
               forebetUsed: ftPred.forebetUsed || false,
               bookLine: ftBookLine,
-              forebetPrediction: ftGame.forebetTotal || null
+              forebetPrediction: ftGame.forebetTotal || null,
+              lineSource: isFinite(ftBookLine) ? 'BOOK' : 'LEAGUE_STATS'
             });
             diag.ftOU.found++;
           } else {
@@ -3803,7 +3806,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
       _pushRow_(b, 'BANKER', 'FT', 'BANKER', bConf);
     }
   } else {
-    output.push(pad23(['No Bankers found']));
+    output.push(pad25(['No Bankers found']));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3869,7 +3872,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
       _pushRow_(s, sMkt, sPer, s.type || 'SNIPER', sConf);
     }
   } else {
-    output.push(pad23(['No Snipers found']));
+    output.push(pad25(['No Snipers found']));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -6799,7 +6799,8 @@ function _selectSnipers(candidates, config, tierCuts) {
         star: !!c.star,
         sortPriority: priority,
         sortValue: bonusOU + (c.star ? 100000 : 0) + (evVal > 0 ? evVal : confVal),
-        isHighQtr: false
+        isHighQtr: false,
+        lineSource: c.lineSource || null
       });
     }
   }

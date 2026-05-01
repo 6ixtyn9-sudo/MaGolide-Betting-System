@@ -4442,6 +4442,7 @@ function predictQuarters_Tier2_OU(ss, options) {
           forebetBlended: forebetBlendApplied,
           forebetWeight: forebetBlendWeight,
           bookLine: isFinite(bookLine) ? bookLine : null,
+          lineSource: isFinite(bookLine) ? 'BOOK' : 'LEAGUE_STATS',
 
           updatedAt: new Date()
         };
@@ -4461,7 +4462,15 @@ function predictQuarters_Tier2_OU(ss, options) {
       }
 
       // ═══ SCORE THE PICK ═══
-      var scored = _scoreOverUnderPick(model, bookLine, cfg, sampleConf);
+      var scoreMeta = {
+        lineSource: isFinite(bookLine) ? 'BOOK' : 'LEAGUE_STATS',
+        league: league,
+        match: matchupStr,
+        quarter: Q,
+        home: home,
+        away: away
+      };
+      var scored = _scoreOverUnderPick(model, bookLine, cfg, sampleConf, scoreMeta);
 
       if (!scored || !scored.play) {
         if (colPick !== undefined) row[colPick] = '';
@@ -4824,10 +4833,10 @@ function _predictQuarterTotal(home, away, Q, cache, cfg) {
   };
 }
 
-function _scoreOverUnderPick(model, bookLine, cfg, sampleConf) {
+function _scoreOverUnderPick(model, bookLine, cfg, sampleConf, meta) {
   // Use existing scorer if available
   if (typeof t2ou_scoreOverUnderPick_ === 'function') {
-    var scored = t2ou_scoreOverUnderPick_(model, bookLine, cfg);
+    var scored = t2ou_scoreOverUnderPick_(model, bookLine, cfg, null, meta);
     if (scored) {
       // Enhance with tier
       scored.tier = _assignTier(scored.confPct, scored.ev);

@@ -1588,6 +1588,8 @@ var T2OU_TINY_LINE_THRESHOLD = 15;    // anything <= 15 is suspicious
 function t2ou_scoreOverUnderPick_(model, line, cfg, calibrator, meta) {
   var FN = 't2ou_scoreOverUnderPick_';
   meta = meta || {};
+  var lineSource = String(meta.lineSource || '').toUpperCase();
+  var isLeagueStats = (lineSource.indexOf('LEAGUE_STATS') !== -1 || lineSource.indexOf('PROXY') !== -1);
 
   // ----- Controls -----
   var verbose = (typeof T2OU_VERBOSE !== 'undefined') ? !!T2OU_VERBOSE : false;
@@ -1800,6 +1802,16 @@ function t2ou_scoreOverUnderPick_(model, line, cfg, calibrator, meta) {
   var pOverCond = _elite_clamp(0.5 + (pOverCondRaw - 0.5) * shrink, 0, 1);
   var pUnderCond = _elite_clamp(0.5 + (pUnderCondRaw - 0.5) * shrink, 0, 1);
 
+  // ----- PHASE 3.1: BIAS CORRECTION (Circular Confidence Mitigation) -----
+  // When line is derived from league stats (no book line), we shrink pWin further
+  // to avoid over-confident circularity in the Assayer.
+  if (isLeagueStats) {
+    var BIAS_SHRINK = 0.7; // Shrink 30% towards 50%
+    pOverCond = 0.5 + (pOverCond - 0.5) * BIAS_SHRINK;
+    pUnderCond = 0.5 + (pUnderCond - 0.5) * BIAS_SHRINK;
+    log('PHASE 3.1: Applied League-Stats Bias Correction (x' + BIAS_SHRINK + ')');
+  }
+
   log('CALC shrinkage: sampleRatio=' + _elite_round(sampleRatio, 3) +
     ' shrink=' + _elite_round(shrink, 3) +
     ' pOverCond=' + _elite_round(pOverCond, 4) +
@@ -1859,6 +1871,19 @@ function t2ou_scoreOverUnderPick_(model, line, cfg, calibrator, meta) {
   if (calibrator) {
     if (typeof calibrator.applyConfidence === 'function') confPct = calibrator.applyConfidence(confPct);
     else if (typeof calibrator === 'function') confPct = calibrator(confPct);
+  }
+
+  // ----- PHASE 3.3: PER-LEAGUE CONFIDENCE WEIGHTS -----
+  // Check for league-specific weight in config: "league_weight_<LEAGUE_NAME>"
+  var leagueName = String(meta.league || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (leagueName) {
+    var lWeight = _elite_toNum(cfg['league_weight_' + leagueName], 1.0);
+    if (lWeight < 1.0) {
+      var oldConf = confPct;
+      // Shrink distance from 50%
+      confPct = 50 + (confPct - 50) * lWeight;
+      log('PHASE 3.3: Applied League Weight (' + leagueName + ') = ' + lWeight + ': ' + oldConf + '% -> ' + Math.round(confPct) + '%');
+    }
   }
 
   // ----- STEP 10: TIERING -----
