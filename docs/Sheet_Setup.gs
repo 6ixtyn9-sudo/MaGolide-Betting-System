@@ -94,55 +94,110 @@
 
 function generateCompleteAccuracyReport(ss) {
   ss = ss || SpreadsheetApp.getActiveSpreadsheet();
-  var ui = SpreadsheetApp.getUi();
-  
+
   Logger.log('═══════════════════════════════════════════════════════════════');
-  Logger.log('    MA GOLIDE COMPLETE ACCURACY REPORT');
+  Logger.log(' MA GOLIDE COMPLETE ACCURACY REPORT');
   Logger.log('═══════════════════════════════════════════════════════════════');
-  
+
   try {
     ss.toast('Generating Complete Accuracy Report...', 'Ma Golide', 30);
-    
-    // Load all data
+
+    // Load all data — PATCHED: no longer throws on missing ResultsClean
     var games = loadHistoricalGamesEnhanced_(ss);
     var betSlipsData = loadBetSlipsComplete_(ss);
-    
+
     Logger.log('[Report] Games loaded: ' + games.length);
     Logger.log('[Report] Bet_Slips rows: ' + betSlipsData.rows.length);
-    
-    // Grade each bet type
+
+    if (betSlipsData.rows.length === 0) {
+      ss.toast('No bet slips found.', 'Ma Golide', 5);
+      return null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PATCH: Collect all unique Market values from Bet_Slips FIRST
+    // This is the source of truth for what bet types exist
+    // ═══════════════════════════════════════════════════════════════════════
+    var allMarkets = {};
+    betSlipsData.rows.forEach(function(row) {
+      var market = String(row.type || '').toUpperCase().trim();
+      if (market && market !== 'UNKNOWN') {
+        allMarkets[market] = (allMarkets[market] || 0) + 1;
+      }
+    });
+    Logger.log('[Report] Unique markets in Bet_Slips: ' + JSON.stringify(allMarkets));
+
+    // Grade each bet type — PATCHED: each wrapped in try/catch
     var reports = {};
-    
-    reports.SNIPER_MARGIN = gradeSniperMargin_(betSlipsData, games);
-    reports.SNIPER_OU = gradeSniperOU_(betSlipsData, games);
-    reports.BANKER = gradeBankers_(betSlipsData, games);
-    reports.ROBBER = gradeRobbers_(betSlipsData, games);
-    reports.FIRST_HALF = gradeFirstHalf_(betSlipsData, games);
-    reports.FT_OU = gradeFTOU_(betSlipsData, games);
-    reports.HIGH_QUARTER = gradeHighQuarter_(betSlipsData, games);
-    
-    // Write unified report
-    writeUnifiedAccuracyReport_(ss, reports);
-    
+
+    try { reports.SNIPER_MARGIN = gradeSniperMargin_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] SNIPER_MARGIN grading failed: ' + e.message); reports.SNIPER_MARGIN = _emptyReport('SNIPER MARGIN', 'Quarter Side Bets (Spreads)', e.message); }
+
+    try { reports.SNIPER_OU = gradeSniperOU_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] SNIPER_OU grading failed: ' + e.message); reports.SNIPER_OU = _emptyReport('SNIPER O/U', 'Quarter Over/Under Totals', e.message); }
+
+    try { reports.BANKER = gradeBankers_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] BANKER grading failed: ' + e.message); reports.BANKER = _emptyReport('BANKER', 'Moneyline Winners', e.message); }
+
+    try { reports.ROBBER = gradeRobbers_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] ROBBER grading failed: ' + e.message); reports.ROBBER = _emptyReport('ROBBER', 'Underdog ML Picks', e.message); }
+
+    try { reports.FIRST_HALF = gradeFirstHalf_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] FIRST_HALF grading failed: ' + e.message); reports.FIRST_HALF = _emptyReport('FIRST HALF 1X2', 'First Half Winner', e.message); }
+
+    try { reports.FT_OU = gradeFTOU_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] FT_OU grading failed: ' + e.message); reports.FT_OU = _emptyReport('FT O/U', 'Full Time Over/Under', e.message); }
+
+    try { reports.HIGH_QUARTER = gradeHighQuarter_(betSlipsData, games); }
+    catch (e) { Logger.log('[Report] HIGH_QUARTER grading failed: ' + e.message); reports.HIGH_QUARTER = _emptyReport('HIGH QUARTER', 'Highest Scoring Quarter', e.message); }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PATCH: Write report with completion audit
+    // ═══════════════════════════════════════════════════════════════════════
+    writeUnifiedAccuracyReport_(ss, reports, games.length, allMarkets);
+
     // Summary
-    var totalBets = 0, totalHits = 0;
+    var totalBets = 0, totalHits = 0, totalMisses = 0;
     Object.keys(reports).forEach(function(key) {
       totalBets += reports[key].matched;
       totalHits += reports[key].hits;
+      totalMisses += reports[key].misses;
     });
-    
+
     var overallRate = totalBets > 0 ? (totalHits / totalBets * 100).toFixed(1) : '0.0';
-    
+
     Logger.log('[Report] COMPLETE: ' + totalHits + '/' + totalBets + ' (' + overallRate + '%)');
     ss.toast('Report complete: ' + totalHits + '/' + totalBets + ' (' + overallRate + '%)', 'Ma Golide', 5);
-    
+
     return reports;
-    
+
   } catch (e) {
     Logger.log('[Report] ERROR: ' + e.message + '\n' + e.stack);
     ss.toast('Accuracy Report Error: ' + e.message, 'Ma Golide', 10);
     return null;
   }
+}
+
+/** Alias for compatibility with runTheWholeShebang */
+function generateAccuracyReport(ss) {
+  return generateCompleteAccuracyReport(ss);
+}
+
+/** Helper: create empty report when grading fails */
+function _emptyReport(name, description, errorMsg) {
+  return {
+    name: name,
+    description: description,
+    found: 0,
+    matched: 0,
+    hits: 0,
+    misses: 0,
+    pushes: 0,
+    ties: 0,
+    hitRate: 0,
+    details: [],
+    error: errorMsg || null
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -151,29 +206,38 @@ function generateCompleteAccuracyReport(ss) {
 
 function loadHistoricalGamesEnhanced_(ss) {
   var sh = findSheet_(ss, 'ResultsClean') || findSheet_(ss, 'Results');
-  if (!sh) throw new Error('ResultsClean not found');
-  
+
+  // ═══ PATCH: Return empty array instead of throwing ═══
+  if (!sh) {
+    Logger.log('[loadHistoricalGamesEnhanced_] ResultsClean not found — returning empty (games not yet played)');
+    return [];
+  }
+
   var data = sh.getDataRange().getValues();
-  if (data.length < 2) throw new Error('No results data');
-  
+  if (data.length < 2) {
+    Logger.log('[loadHistoricalGamesEnhanced_] ResultsClean has no data rows — returning empty');
+    return [];
+  }
+  // ═══ END PATCH ═══
+
   var h = buildHeaderMap_(data[0]);
   var games = [];
-  
+
   for (var r = 1; r < data.length; r++) {
     var row = data[r];
-    
+
     var home = String(row[h.home] || row[h.hometeam] || '').trim();
     var away = String(row[h.away] || row[h.awayteam] || '').trim();
     if (!home || !away) continue;
-    
+
     // Parse quarters (handles "26 - 26" combined format)
     var qScores = {};
     var allValid = true;
-    
+
     for (var q = 1; q <= 4; q++) {
       var Q = 'Q' + q;
       var qKey = 'q' + q;
-      
+
       // Try combined format first
       if (h[qKey] !== undefined) {
         var parsed = parseScoreValue_(row[h[qKey]]);
@@ -182,7 +246,7 @@ function loadHistoricalGamesEnhanced_(ss) {
           continue;
         }
       }
-      
+
       // Try separate columns
       if (h[qKey + 'h'] !== undefined && h[qKey + 'a'] !== undefined) {
         var hScore = parseFloat(row[h[qKey + 'h']]);
@@ -192,18 +256,18 @@ function loadHistoricalGamesEnhanced_(ss) {
           continue;
         }
       }
-      
+
       allValid = false;
     }
-    
+
     if (!allValid) continue;
-    
+
     // Calculate totals
     var fhHome = qScores.Q1.home + qScores.Q2.home;
     var fhAway = qScores.Q1.away + qScores.Q2.away;
     var ftHome = fhHome + qScores.Q3.home + qScores.Q4.home;
     var ftAway = fhAway + qScores.Q3.away + qScores.Q4.away;
-    
+
     // Try to use FT Score column if available
     var ftCol = h.ftscore || h.ft || h.final;
     if (ftCol !== undefined) {
@@ -213,7 +277,7 @@ function loadHistoricalGamesEnhanced_(ss) {
         ftAway = ftParsed.away;
       }
     }
-    
+
     // Find highest quarter
     var highestQ = 'Q1';
     var highestTotal = 0;
@@ -224,14 +288,14 @@ function loadHistoricalGamesEnhanced_(ss) {
         highestQ = Q;
       }
     });
-    
+
     games.push({
       home: home,
       away: away,
       homeNorm: normalizeTeam_(home),
       awayNorm: normalizeTeam_(away),
       date: row[h.date] || '',
-      league: row[h.league] || 'NBA',
+      league: row[h.league] || '',
       qScores: qScores,
       fhHome: fhHome,
       fhAway: fhAway,
@@ -244,7 +308,7 @@ function loadHistoricalGamesEnhanced_(ss) {
       highestTotal: highestTotal
     });
   }
-  
+
   return games;
 }
 
@@ -591,7 +655,7 @@ function gradeBankers_(betSlipsData, games) {
     hitRate: 0,
     details: []
   };
-  
+
   var bankerBets = betSlipsData.rows.filter(function(row) {
     var typeU = String(row.type || '').toUpperCase();
     if (typeU === 'BANKER') return true;
@@ -601,28 +665,89 @@ function gradeBankers_(betSlipsData, games) {
     return combined.indexOf('BANKER') !== -1 ||
            (combined.indexOf('ML') !== -1 && combined.indexOf('ROBBER') === -1);
   });
-  
+
   result.found = bankerBets.length;
-  
+  Logger.log('[gradeBankers_] Found ' + result.found + ' banker bets');
+
+  // ═══ PATCH: If no games loaded (ResultsClean missing), mark all as PENDING ═══
+  if (games.length === 0 && bankerBets.length > 0) {
+    Logger.log('[gradeBankers_] No games available for grading — marking as PENDING');
+    bankerBets.forEach(function(bet) {
+      result.details.push({
+        league: bet.league || '',
+        date: bet.date,
+        time: bet.time,
+        match: bet.match,
+        pick: bet.pick || '',
+        type: 'BANKER',
+        odds: bet.odds || '-',
+        confidence: bet.confidence,
+        ev: bet.ev || '-',
+        tier: bet.tier,
+        predictedWinner: '',
+        actualScore: 'PENDING',
+        actualWinner: 'PENDING',
+        outcome: '⏳ PENDING'
+      });
+    });
+    return result;
+  }
+  // ═══ END PATCH ═══
+
   bankerBets.forEach(function(bet) {
     var game = findMatchingGame_(games, bet.homeNorm, bet.awayNorm);
-    if (!game) return;
-    
+    if (!game) {
+      // ═══ PATCH: Log unmatched bets instead of silently dropping ═══
+      Logger.log('[gradeBankers_] No matching game for: ' + bet.match +
+                 ' (homeNorm=' + bet.homeNorm + ', awayNorm=' + bet.awayNorm + ')');
+      return;
+    }
+
     result.matched++;
-    
-    // Determine predicted winner from pick text
-    var pickText = bet.pick + ' ' + findWinnerInRow_(bet.rawRow, bet.headerMap, game);
+
+    // ═══ PATCH: Use Selection_Side from 23-col contract (most reliable) ═══
     var predicted = 'HOME';
-    
-    if (pickText.toLowerCase().indexOf(game.away.toLowerCase()) !== -1 ||
-        pickText.indexOf('Away') !== -1 || pickText.indexOf('2') !== -1) {
+    var selSide = getColValue_(bet.rawRow, bet.headerMap,
+      ['selection_side', 'selectionside', 'side']);
+    var selTeam = getColValue_(bet.rawRow, bet.headerMap,
+      ['selection_team', 'selectionteam']);
+    var selLine = getColValue_(bet.rawRow, bet.headerMap,
+      ['selection_line', 'selectionline']);
+
+    // Priority 1: Selection_Side = 'HOME' or 'AWAY'
+    if (selSide) {
+      var sideU = selSide.toUpperCase();
+      if (sideU === 'AWAY' || sideU === 'A' || sideU === '2') {
+        predicted = 'AWAY';
+      } else if (sideU === 'HOME' || sideU === 'H' || sideU === '1') {
+        predicted = 'HOME';
+      }
+    }
+    // Priority 2: Selection_Line = '1' (home) or '2' (away)
+    else if (selLine === '2') {
+      predicted = 'AWAY';
+    } else if (selLine === '1') {
+      predicted = 'HOME';
+    }
+    // Priority 3: Selection_Team matches away team
+    else if (selTeam && game.away &&
+             normalizeTeam_(selTeam) === normalizeTeam_(game.away)) {
       predicted = 'AWAY';
     }
-    
+    // Priority 4: Pick text contains team name
+    else {
+      var pickText = (bet.pick + ' ' + selTeam + ' ' +
+                      findWinnerInRow_(bet.rawRow, bet.headerMap, game)).toLowerCase();
+      if (game.away && pickText.indexOf(game.away.toLowerCase()) !== -1) {
+        predicted = 'AWAY';
+      }
+    }
+    // ═══ END PATCH ═══
+
     var outcome = predicted === game.ftWinner ? 'HIT' : 'MISS';
     if (outcome === 'HIT') result.hits++;
     else result.misses++;
-    
+
     result.details.push({
       league: bet.league || game.league,
       date: bet.date,
@@ -640,9 +765,9 @@ function gradeBankers_(betSlipsData, games) {
       outcome: outcome === 'HIT' ? '✅ HIT' : '❌ MISS'
     });
   });
-  
+
   result.hitRate = result.matched > 0 ? (result.hits / result.matched * 100) : 0;
-  
+
   return result;
 }
 
@@ -949,92 +1074,227 @@ function gradeHighQuarter_(betSlipsData, games) {
 // WRITE UNIFIED ACCURACY REPORT
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function writeUnifiedAccuracyReport_(ss, reports) {
+function writeUnifiedAccuracyReport_(ss, reports, gamesLoaded, allMarkets) {
   var sheetName = 'Accuracy_Report';
   var sh = findSheet_(ss, sheetName);
   if (!sh) {
     sh = ss.insertSheet(sheetName);
   }
   sh.clear();
-  
+
   var output = [];
-  var rowIndex = 0;
-  
-  // HEADER
-  output.push(['MA GOLIDE ACCURACY REPORT', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-  output.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '', '', '', '', '', '', '', '']);
-  output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-  
-  // Process each report type
+  var maxCols = 14;
+
+  function pad(row) {
+    while (row.length < maxCols) row.push('');
+    return row.slice(0, maxCols);
+  }
+
+  // ═══ HEADER ═══
+  output.push(pad(['MA GOLIDE COMPLETE ACCURACY REPORT']));
+  output.push(pad(['Generated:', new Date().toLocaleString()]));
+  output.push(pad(['']));
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PATCH: OVERALL SUMMARY (counts ALL bet types including BANKER)
+  // ═══════════════════════════════════════════════════════════════════════
+  var totalFound = 0, totalMatched = 0, totalHits = 0, totalMisses = 0, totalPushes = 0;
+  Object.keys(reports).forEach(function(key) {
+    var r = reports[key];
+    totalFound += r.found;
+    totalMatched += r.matched;
+    totalHits += r.hits;
+    totalMisses += r.misses;
+    totalPushes += (r.pushes || 0) + (r.ties || 0);
+  });
+
+  output.push(pad(['═══ OVERALL SUMMARY ═══']));
+  output.push(pad(['Total Bets Found:', totalFound]));
+  output.push(pad(['Total Bets Graded:', totalMatched]));
+  output.push(pad(['Total Hits:', totalHits]));
+  output.push(pad(['Total Misses:', totalMisses]));
+  if (totalPushes > 0) output.push(pad(['Total Pushes/Ties:', totalPushes]));
+  var overallRate = totalMatched > 0 ? (totalHits / totalMatched * 100).toFixed(2) + '%' : 'N/A';
+  output.push(pad(['Overall Hit Rate:', overallRate]));
+  output.push(pad(['Games in ResultsClean:', gamesLoaded || 0]));
+
+  if ((gamesLoaded || 0) === 0) {
+    output.push(pad(['⚠️ NOTE:', 'No ResultsClean data — games may not have been played yet. Bets shown as PENDING.']));
+  }
+
+  output.push(pad(['']));
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PATCH: BY BET TYPE SUMMARY TABLE (shows ALL types, never skips)
+  // ═══════════════════════════════════════════════════════════════════════
+  output.push(pad(['═══ BY BET TYPE ═══']));
+  output.push(pad(['Bet Type', 'Found', 'Matched', 'Hits', 'Misses', 'Pushes/Ties', 'Hit Rate']));
+
+  Object.keys(reports).forEach(function(key) {
+    var r = reports[key];
+    // ═══ PATCH: NEVER skip — show all types even if found=0 ═══
+    var pushCount = (r.pushes || 0) + (r.ties || 0);
+    var graded = r.matched - pushCount;
+    var hitRate = graded > 0 ? (r.hits / graded * 100).toFixed(2) + '%' : 'N/A';
+
+    var row = [r.name, r.found, r.matched, r.hits, r.misses, pushCount, hitRate];
+    if (r.error) row.push('ERROR: ' + r.error);
+    output.push(pad(row));
+  });
+
+  output.push(pad(['']));
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DETAILED SECTIONS (per bet type)
+  // ═══════════════════════════════════════════════════════════════════════
   Object.keys(reports).forEach(function(key) {
     var report = reports[key];
-    
-    if (report.found === 0) return; // Skip empty sections
-    
-    // Section header
-    output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['═══ ' + report.name + ' — ' + report.description + ' ═══', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Source sheet:', 'Bet_Slips', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Total bets found:', report.found, '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Matched to ResultsClean:', report.matched, '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Hits:', report.hits, '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['Misses:', report.misses, '', '', '', '', '', '', '', '', '', '', '', '']);
-    
-    if (report.pushes !== undefined) {
-      output.push(['Pushes/Ties:', report.pushes || report.ties || 0, '', '', '', '', '', '', '', '', '', '', '', '']);
+
+    // ═══ PATCH: Show section even if found=0 — makes it visible that it was checked ═══
+    output.push(pad(['']));
+    output.push(pad(['═══ ' + report.name + ' — ' + report.description + ' ═══']));
+    output.push(pad(['Source sheet:', 'Bet_Slips']));
+    output.push(pad(['Total bets found:', report.found]));
+
+    if (report.error) {
+      output.push(pad(['⚠️ GRADING ERROR:', report.error]));
+      output.push(pad(['']));
+      return;
     }
-    
-    output.push(['Hit Rate (excl pushes/ties):', report.hitRate.toFixed(2) + '%', '', '', '', '', '', '', '', '', '', '', '', '']);
-    output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-    
-    // Detail header
+
+    if (report.found === 0) {
+      output.push(pad(['No bets of this type found in Bet_Slips']));
+      output.push(pad(['']));
+      return;
+    }
+
+    output.push(pad(['Matched to ResultsClean:', report.matched]));
+    output.push(pad(['Hits:', report.hits]));
+    output.push(pad(['Misses:', report.misses]));
+
+    if (report.pushes !== undefined && report.pushes > 0) {
+      output.push(pad(['Pushes/Ties:', report.pushes || report.ties || 0]));
+    }
+
+    var graded = report.matched - (report.pushes || 0);
+    var hitRate = graded > 0 ? (report.hits / graded * 100).toFixed(2) + '%' : 'N/A';
+    output.push(pad(['Hit Rate (excl pushes/ties):', hitRate]));
+
+    // Unmatched warning
+    if (report.found > 0 && report.matched < report.found) {
+      output.push(pad(['⚠️ Unmatched bets:', report.found - report.matched,
+                        '(no matching game found in ResultsClean)']));
+    }
+
+    output.push(pad(['']));
+
+    // Detail rows
     if (report.details.length > 0) {
-      output.push(['--- BET DETAILS ---', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-      
-      // Build header based on bet type
+      output.push(pad(['--- BET DETAILS ---']));
       var detailHeader = buildDetailHeader_(key);
       output.push(detailHeader);
-      
-      // Add each detail row
+
       report.details.forEach(function(d) {
         var detailRow = buildDetailRow_(key, d);
         output.push(detailRow);
       });
     }
-    
-    output.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+
+    output.push(pad(['']));
   });
-  
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PATCH: BET TYPE COMPLETION AUDIT
+  // ═══════════════════════════════════════════════════════════════════════
+  output.push(pad(['']));
+  output.push(pad(['═══ BET TYPE COMPLETION AUDIT ═══']));
+
+  var reportedMarkets = {};
+  Object.keys(reports).forEach(function(key) {
+    var r = reports[key];
+    // Map report key to the actual Market values it covers
+    var coveredMarkets = _getMarketsForReportKey(key);
+    coveredMarkets.forEach(function(m) { reportedMarkets[m] = key; });
+  });
+
+  var allMarketKeys = Object.keys(allMarkets || {});
+  var covered = 0;
+  var missing = [];
+
+  allMarketKeys.forEach(function(market) {
+    if (reportedMarkets[market]) {
+      covered++;
+      output.push(pad(['✅', market, 'Graded by: ' + reportedMarkets[market],
+                        'Count: ' + allMarkets[market]]));
+    } else {
+      missing.push(market);
+      output.push(pad(['❌', market, 'NOT GRADED — no grading function for this market type',
+                        'Count: ' + allMarkets[market]]));
+    }
+  });
+
+  output.push(pad(['']));
+  var auditResult = covered + '/' + allMarketKeys.length + ' bet types graded';
+  if (missing.length === 0) {
+    output.push(pad(['✅ AUDIT PASSED:', auditResult]));
+  } else {
+    output.push(pad(['❌ AUDIT FAILED:', auditResult,
+                      'MISSING: ' + missing.join(', ')]));
+  }
+
   // Write to sheet
-  var maxCols = 14;
   var paddedOutput = output.map(function(row) {
     while (row.length < maxCols) row.push('');
     return row.slice(0, maxCols);
   });
-  
+
   sh.getRange(1, 1, paddedOutput.length, maxCols).setValues(paddedOutput);
-  
+
   // Formatting
-  sh.getRange(1, 1, 1, maxCols).setFontWeight('bold').setFontSize(14).setBackground('#4a86e8').setFontColor('white');
-  
-  // Format section headers
+  sh.getRange(1, 1, 1, maxCols).setFontWeight('bold').setFontSize(14)
+    .setBackground('#4a86e8').setFontColor('white');
+
   for (var i = 0; i < paddedOutput.length; i++) {
     var cell = String(paddedOutput[i][0]);
-    
+
     if (cell.startsWith('═══')) {
       sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#d9ead3');
     }
     if (cell === '--- BET DETAILS ---') {
       sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#e8e8e8');
     }
-    if (cell === 'League') {
+    if (cell === 'League' || cell === 'Bet Type') {
       sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#f3f3f3');
     }
+    if (cell === '✅ AUDIT PASSED:') {
+      sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#b6d7a8');
+    }
+    if (cell === '❌ AUDIT FAILED:') {
+      sh.getRange(i + 1, 1, 1, maxCols).setFontWeight('bold').setBackground('#ea9999');
+    }
   }
-  
+
   sh.autoResizeColumns(1, maxCols);
-  
+
   Logger.log('[writeUnifiedAccuracyReport_] Report written to ' + sheetName);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEW: Map report keys to the Market values they cover
+// Used by the completion audit to verify all markets are graded
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function _getMarketsForReportKey(key) {
+  var mapping = {
+    'SNIPER_MARGIN': ['SNIPER_MARGIN'],
+    'SNIPER_OU': ['SNIPER_OU', 'SNIPER_OU_DIR', 'SNIPER_OU_STAR'],
+    'BANKER': ['BANKER'],
+    'ROBBER': ['ROBBER'],
+    'FIRST_HALF': ['FIRST_HALF_1X2'],
+    'FT_OU': ['FT_OU'],
+    'HIGH_QUARTER': ['SNIPER']  // HQ bets use Market='SNIPER' with 'Highest Q' text
+  };
+  return mapping[key] || [key];
 }
 
 function buildDetailHeader_(betType) {
