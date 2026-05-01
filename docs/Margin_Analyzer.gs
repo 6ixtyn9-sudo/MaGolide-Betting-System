@@ -2545,6 +2545,10 @@ function generateAccuracyReport(ssArg) {
     Logger.log('[generateAccuracyReport] Games loaded: '   + games.length);
     Logger.log('[generateAccuracyReport] Bet_Slips rows: ' + betSlipsData.rows.length);
 
+    if (games.length === 0) {
+      Logger.log('[generateAccuracyReport] No historical games found. Skipping grading but creating empty report.');
+    }
+
     // ── Grade all bet types ────────────────────────────────────────────────
     var reports = {};
     reports.SNIPER_MARGIN = gradeSniperMargin_(betSlipsData, games);
@@ -2733,7 +2737,10 @@ function loadHistoricalGamesEnhanced_(ss) {
   if (!sh) throw new Error('ResultsClean not found');
   
   var data = sh.getDataRange().getValues();
-  if (data.length < 2) throw new Error('No results data');
+  if (data.length < 2) {
+    Logger.log('[loadHistoricalGamesEnhanced_] No results data rows found.');
+    return [];
+  }
   
   var h = buildHeaderMap_(data[0]);
   var games = [];

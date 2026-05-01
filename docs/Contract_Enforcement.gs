@@ -3578,14 +3578,16 @@ function _formatBetSlipRow_(pick, market, period, cfgBundle, slipIndex,
     t1,
     t2,
     acc,
-    'Module_8_Accumulator'
+    'Module_8_Accumulator',
+    '', // Config_Stamp_ID (filled by stampBatch)
+    (pick && (pick.lineSource || pick.source)) || '' // Book_Line_Source
   ];
 }
 
 
 
 /**
- * _writeBetSlipsEnhanced — Write all picks to Bet_Slips sheet (23-col contract)
+ * _writeBetSlipsEnhanced — Write all picks to Bet_Slips sheet (25-col contract)
  *
  * This version:
  * - Fixes conf parsing (supports 0.57 -> 57%)
@@ -3609,7 +3611,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
     sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(23, sheet.getLastColumn())).clearContent();
   }
   var lastRowBefore = sheet.getLastRow();
-  try { sheet.getRange('A:W').setNumberFormat('@'); } catch (eFmt) {}
+  try { sheet.getRange('A:Y').setNumberFormat('@'); } catch (eFmt) {}
 
   // ─── NORMALIZE PICKS OBJECT ────────────────────────────────────────────────
   picks = picks || {};
@@ -3619,7 +3621,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   picks.firstHalves = picks.firstHalves || [];
   picks.ftOUs = picks.ftOUs || [];
 
-  var NUM_COLS = 23;
+  var NUM_COLS = 25;
   var slipSeq = 0;
 
   var cfgAcc = (config && (config.config_version_accumulator || config.acc_version || config.version)) ||
@@ -3631,16 +3633,17 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
 
   var cfgBundle = { t1: cfgVers.t1 || '', t2: cfgVers.t2 || '', acc: cfgAcc };
 
-  var headers = (typeof BET_SLIPS_CONTRACT_23 !== 'undefined')
-    ? BET_SLIPS_CONTRACT_23.slice()
+  var headers = (typeof BET_SLIPS_CONTRACT_25 !== 'undefined')
+    ? BET_SLIPS_CONTRACT_25.slice()
     : [
       'Bet_Record_ID', 'Universal_Game_ID', 'Source_Prediction_Record_ID',
       'League', 'Date', 'Home', 'Away', 'Market', 'Period', 'Selection_Side', 'Selection_Line',
       'Selection_Team', 'Selection_Text', 'Odds', 'Confidence_Pct', 'Confidence_Prob', 'EV',
-      'Tier_Code', 'Tier_Display', 'Config_Version_T1', 'Config_Version_T2', 'Config_Version_Acc', 'Source_Module'
+      'Tier_Code', 'Tier_Display', 'Config_Version_T1', 'Config_Version_T2', 'Config_Version_Acc', 'Source_Module',
+      'Config_Stamp_ID', 'Book_Line_Source'
     ];
 
-  function pad23(cells) {
+  function pad25(cells) {
     var r = cells ? cells.slice() : [];
     while (r.length < NUM_COLS) r.push('');
     return r;
@@ -3777,20 +3780,20 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
 
   // ─── BUILD OUTPUT ──────────────────────────────────────────────────────────
   var output = [
-    pad23(['Ma Golide Bet Slips - Generated: ' + new Date().toLocaleString() +
+    pad25(['Ma Golide Bet Slips - Generated: ' + new Date().toLocaleString() +
       (enhancementsEnabled ? ' [ENHANCED]' : '')]),
-    pad23([])
+    pad25([])
   ];
 
   if (lastRowBefore > 0) {
-    output.unshift(pad23([]));
-    output.unshift(pad23(['── Bet_Slips run ' + new Date().toISOString() + ' ──']));
+    output.unshift(pad25([]));
+    output.unshift(pad25(['── Bet_Slips run ' + new Date().toISOString() + ' ──']));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // BANKERS
   // ═══════════════════════════════════════════════════════════════════════════
-  output.push(pad23(['──── BANKERS (>=' + (config.bankerThreshold || 60) + '% Confidence) ────']));
+  output.push(pad25(['──── BANKERS (>=' + (config.bankerThreshold || 60) + '% Confidence) ────']));
   output.push(headers);
 
   if (picks.bankers.length) {
@@ -3807,8 +3810,8 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   // ROBBERS
   // ═══════════════════════════════════════════════════════════════════════════
   if (picks.robbers && picks.robbers.length > 0) {
-    output.push(pad23([]));
-    output.push(pad23(['──── ROBBERS (Upset Picks) ────']));
+    output.push(pad25([]));
+    output.push(pad25(['──── ROBBERS (Upset Picks) ────']));
     output.push(headers);
 
     for (var ri = 0; ri < picks.robbers.length; ri++) {
@@ -3824,8 +3827,8 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   // FIRST HALF
   // ═══════════════════════════════════════════════════════════════════════════
   if (picks.firstHalves && picks.firstHalves.length > 0) {
-    output.push(pad23([]));
-    output.push(pad23(['──── FIRST HALF 1x2 ────']));
+    output.push(pad25([]));
+    output.push(pad25(['──── FIRST HALF 1x2 ────']));
     output.push(headers);
 
     for (var hi = 0; hi < picks.firstHalves.length; hi++) {
@@ -3839,8 +3842,8 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   // FT O/U
   // ═══════════════════════════════════════════════════════════════════════════
   if (picks.ftOUs && picks.ftOUs.length > 0) {
-    output.push(pad23([]));
-    output.push(pad23(['──── FULL TIME OVER/UNDER ────']));
+    output.push(pad25([]));
+    output.push(pad25(['──── FULL TIME OVER/UNDER ────']));
     output.push(headers);
 
     for (var fi = 0; fi < picks.ftOUs.length; fi++) {
@@ -3853,8 +3856,8 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   // ═══════════════════════════════════════════════════════════════════════════
   // SNIPERS
   // ═══════════════════════════════════════════════════════════════════════════
-  output.push(pad23([]));
-  output.push(pad23(['──── SNIPERS (Margin + O/U) ────']));
+  output.push(pad25([]));
+  output.push(pad25(['──── SNIPERS (Margin + O/U) ────']));
   output.push(headers);
 
   if (picks.snipers.length) {
@@ -3875,14 +3878,14 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   var totalPicks = picks.bankers.length + picks.snipers.length + picks.robbers.length +
     picks.firstHalves.length + picks.ftOUs.length;
 
-  output.push(pad23([]));
-  output.push(pad23(['──── SUMMARY ────']));
-  output.push(pad23(['Bankers:', String(picks.bankers.length), '',
+  output.push(pad25([]));
+  output.push(pad25(['──── SUMMARY ────']));
+  output.push(pad25(['Bankers:', String(picks.bankers.length), '',
     'ROBBERS:', String(picks.robbers.length), '',
     '1H:', String(picks.firstHalves.length), '', '']));
-  output.push(pad23(['Snipers:', String(picks.snipers.length), '',
+  output.push(pad25(['Snipers:', String(picks.snipers.length), '',
     'FT O/U:', String(picks.ftOUs.length), '', '', '', '', '']));
-  output.push(pad23(['TOTAL PICKS:', String(totalPicks), '', '', '', '', '', '', '', '']));
+  output.push(pad25(['TOTAL PICKS:', String(totalPicks), '', '', '', '', '', '', '', '']));
 
   // ─── WRITE TO SHEET (append) ────────────────────────────────────────────────
   var writeStart = lastRowBefore + 1;
@@ -3924,14 +3927,9 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
     }
   }
 
-  // Config stamp on each machine pick row (Bet_Record_ID contains __SLIP_)
-  for (var st = 0; st < output.length; st++) {
-    var id0 = String(output[st][0] || '');
-    if (id0.indexOf('__SLIP_') === -1) continue;
-    var absRow = writeStart + st;
-    if (typeof ConfigLedger_Satellite !== 'undefined' && ConfigLedger_Satellite.stampRow) {
-      ConfigLedger_Satellite.stampRow(sheet, absRow);
-    }
+  // Config stamp entire run efficiently
+  if (typeof ConfigLedger_Satellite !== 'undefined' && ConfigLedger_Satellite.stampBatch) {
+    ConfigLedger_Satellite.stampBatch(sheet, writeStart, output.length);
   }
 
   Logger.log('[' + fn + '] Bet_Slips appended from row ' + writeStart + ': ' + output.length +

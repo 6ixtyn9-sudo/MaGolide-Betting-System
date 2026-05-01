@@ -438,8 +438,8 @@ var FORENSIC_CORE_17 = [
   "Edge_Score"
 ];
 
-/** Bet_Slips machine contract (23 columns) — Phase 2 Patch 3B */
-var BET_SLIPS_CONTRACT_23 = [
+/** Bet_Slips machine contract (25 columns) — Phase 2 Patch 4 */
+var BET_SLIPS_CONTRACT_25 = [
   "Bet_Record_ID",
   "Universal_Game_ID",
   "Source_Prediction_Record_ID",
@@ -462,7 +462,9 @@ var BET_SLIPS_CONTRACT_23 = [
   "Config_Version_T1",
   "Config_Version_T2",
   "Config_Version_Acc",
-  "Source_Module"
+  "Source_Module",
+  "Config_Stamp_ID",
+  "Book_Line_Source"
 ];
 
 /** ResultsClean canonical machine columns (append-only header upgrade) */

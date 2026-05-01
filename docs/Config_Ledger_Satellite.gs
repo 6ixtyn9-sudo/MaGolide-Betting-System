@@ -61,6 +61,7 @@ var ConfigLedger_Satellite = {
   },
 
   _buildConfigSnapshot: function () {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var safeGet = function (fn) {
       try {
         return fn();
@@ -69,10 +70,18 @@ var ConfigLedger_Satellite = {
       }
     };
 
+    // Load accumulator config if available
+    var accCfg = {};
+    if (typeof loadAccumulatorConfig === "function") {
+      try {
+        accCfg = loadAccumulatorConfig(ss);
+      } catch (e) {}
+    }
+
     return {
       version: safeGet(function () {
         return CONTRACT_VERSION;
-      }) || "MULTI-LEAGUE-STRICT-2.0",
+      }) || "GOLD-UNIVERSE-CONTRACT-1.0",
       built_at: safeGet(function () {
         return CONTRACT_BUILD_DATE;
       }) || new Date().toISOString().split("T")[0],
@@ -103,7 +112,25 @@ var ConfigLedger_Satellite = {
         return typeof CONF_BUCKETS !== "undefined" ? JSON.stringify(CONF_BUCKETS) : "[]";
       }) || "[]",
       strict_side: typeof ENFORCE_STRICT_SIDE !== "undefined" ? ENFORCE_STRICT_SIDE : true,
-      outright_only: typeof OUTRIGHT_ONLY !== "undefined" ? OUTRIGHT_ONLY : true
+      outright_only: typeof OUTRIGHT_ONLY !== "undefined" ? OUTRIGHT_ONLY : true,
+      
+      // Accumulator Gating
+      banker_threshold: accCfg.bankerThreshold || null,
+      sniper_min_margin: accCfg.sniperMinMargin || null,
+      max_snipers_per_game: accCfg.maxSnipersPerGame || null,
+      ou_min_conf: accCfg.ouMinConf || null,
+      ou_min_ev: accCfg.ouMinEV || null,
+      min_edge_score: accCfg.minEdgeScore || null,
+      
+      // Feature Flags
+      include_ou: accCfg.includeOUSignals !== undefined ? accCfg.includeOUSignals : null,
+      include_hq: accCfg.includeHighestQuarter !== undefined ? accCfg.includeHighestQuarter : null,
+      enable_robbers: accCfg.enableRobbers !== undefined ? accCfg.enableRobbers : null,
+      enable_1h: accCfg.enableFirstHalf !== undefined ? accCfg.enableFirstHalf : null,
+      enable_ftou: accCfg.enableFTOU !== undefined ? accCfg.enableFTOU : null,
+      
+      // HQ Settings
+      hq_min_conf: accCfg.hqMinConfidence || null
     };
   },
 
@@ -132,6 +159,25 @@ var ConfigLedger_Satellite = {
       }
     }
     var now = new Date().toISOString();
+    
+    // Group settings for the JSON blob
+    var settingsJson = JSON.stringify({
+      banker_threshold: cfg.banker_threshold,
+      sniper_min_margin: cfg.sniper_min_margin,
+      max_snipers_per_game: cfg.max_snipers_per_game,
+      ou_min_conf: cfg.ou_min_conf,
+      ou_min_ev: cfg.ou_min_ev,
+      min_edge_score: cfg.min_edge_score,
+      include_ou: cfg.include_ou,
+      include_hq: cfg.include_hq,
+      enable_robbers: cfg.enable_robbers,
+      enable_1h: cfg.enable_1h,
+      enable_ftou: cfg.enable_ftou,
+      hq_min_conf: cfg.hq_min_conf,
+      strict_side: cfg.strict_side,
+      outright_only: cfg.outright_only
+    });
+
     sheet.appendRow([
       stampId,
       cfg.version || "",
@@ -142,7 +188,8 @@ var ConfigLedger_Satellite = {
       cfg.spread_buckets || "",
       cfg.line_buckets || "",
       cfg.conf_buckets || "",
-      "",
+      settingsJson,
+      "", // notes
       now
     ]);
   },
@@ -151,7 +198,7 @@ var ConfigLedger_Satellite = {
     var headers = [
       "stamp_id", "version", "built_at", "leagues",
       "tier_weights", "conf_thresholds", "spread_buckets",
-      "line_buckets", "conf_buckets", "notes", "created_at"
+      "line_buckets", "conf_buckets", "settings_json", "notes", "created_at"
     ];
     sheet.getRange(1, 1, 1, headers.length)
       .setValues([headers])
@@ -161,7 +208,8 @@ var ConfigLedger_Satellite = {
     sheet.setFrozenRows(1);
     sheet.setColumnWidth(1, 140);
     sheet.setColumnWidth(2, 120);
-    sheet.setColumnWidth(11, 180);
+    sheet.setColumnWidth(10, 250); // settings_json
+    sheet.setColumnWidth(12, 180); // created_at
   },
 
   _findOrCreateStampColumn: function (sheet) {
