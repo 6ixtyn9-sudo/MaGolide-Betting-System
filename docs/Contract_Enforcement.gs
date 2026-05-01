@@ -3581,9 +3581,9 @@ function _formatBetSlipRow_(pick, market, period, cfgBundle, slipIndex,
     t1,
     t2,
     acc,
-    'Module_8_Accumulator',
-    '', // Config_Stamp_ID (filled by stampBatch)
-    (pick && (pick.lineSource || pick.source)) || '' // Book_Line_Source
+    typeLabel || 'M8_ACCUMULATOR',
+    (cfgBundle && cfgBundle.stamp) || '', 
+    (pick && (pick.lineSource || pick.source)) || ''
   ];
 }
 
@@ -3630,11 +3630,13 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
   var cfgAcc = (config && (config.config_version_accumulator || config.acc_version || config.version)) ||
     (typeof CONTRACT_VERSION !== 'undefined' ? CONTRACT_VERSION : 'ACC');
 
-  var cfgVers = (typeof _m8_readConfigVersions_ === 'function')
-    ? _m8_readConfigVersions_(ss)
-    : { t1: '', t2: '' };
-
-  var cfgBundle = { t1: cfgVers.t1 || '', t2: cfgVers.t2 || '', acc: cfgAcc };
+  var cfgVers = readConfigVersionsWithFallback_(ss);
+  var cfgBundle = { 
+    t1: cfgVers.t1 || '', 
+    t2: cfgVers.t2 || '', 
+    acc: cfgAcc 
+  };
+  cfgBundle.stamp = generateConfigStamp_(cfgBundle, ss);
 
   var headers = (typeof BET_SLIPS_CONTRACT_25 !== 'undefined')
     ? BET_SLIPS_CONTRACT_25.slice()
@@ -3803,7 +3805,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
     for (var bi = 0; bi < picks.bankers.length; bi++) {
       var b = picks.bankers[bi];
       var bConf = parseConf(b.confidence);
-      _pushRow_(b, 'BANKER', 'FT', 'BANKER', bConf);
+      _pushRow_(b, 'BANKER', 'FT', 'M8_BANKER', bConf);
     }
   } else {
     output.push(pad25(['No Bankers found']));
@@ -3822,7 +3824,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
       var rConf = parseConf(r.confidence);
 
       // Use robber object directly (keeps all fields _formatBetSlipRow_ might need)
-      _pushRow_(r, 'ROBBER', 'FT', 'ROBBER', rConf);
+      _pushRow_(r, 'ROBBER', 'FT', 'M8_ROBBER', rConf);
     }
   }
 
@@ -3837,7 +3839,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
     for (var hi = 0; hi < picks.firstHalves.length; hi++) {
       var h = picks.firstHalves[hi];
       var hConf = parseConf(h.confidence);
-      _pushRow_(h, 'FIRST_HALF_1X2', '1H', '1H 1x2', hConf);
+      _pushRow_(h, 'FIRST_HALF_1X2', '1H', 'M8_FIRST_HALF', hConf);
     }
   }
 
@@ -3852,7 +3854,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
     for (var fi = 0; fi < picks.ftOUs.length; fi++) {
       var f = picks.ftOUs[fi];
       var fConf = parseConf(f.confidence);
-      _pushRow_(f, 'FT_OU', 'FT', 'FT O/U', fConf);
+      _pushRow_(f, 'FT_OU', 'FT', 'M8_FT_OU', fConf);
     }
   }
 
@@ -3869,7 +3871,8 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
       var sConf = parseConf(s.confidence);
       var sMkt = slipMarketFromSniper_(s);
       var sPer = slipPeriodFromSniper_(s);
-      _pushRow_(s, sMkt, sPer, s.type || 'SNIPER', sConf);
+      var sMod = (sMkt === 'SNIPER_OU') ? 'M8_SNIPER_OU' : (sMkt === 'SNIPER_MARGIN' ? 'M8_SNIPER_MARGIN' : 'M8_SNIPER');
+      _pushRow_(s, sMkt, sPer, sMod, sConf);
     }
   } else {
     output.push(pad25(['No Snipers found']));
@@ -5334,4 +5337,60 @@ function alignForensicLogsToContract_(ss) {
   });
   
   return results;
+}
+
+
+/**
+ * generateConfigStamp_ - Creates a unique content-addressed fingerprint of the configuration
+ * so the Assayer can verify exactly what rules were active during this run.
+ */
+function generateConfigStamp_(cfgBundle, ss) {
+  try {
+    var ssId = ss.getId();
+    var payload = cfgBundle.t1 + '|' + cfgBundle.t2 + '|' + cfgBundle.acc + '|' + ssId;
+    var hashBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, payload);
+    var hash = '';
+    for (var i = 0; i < hashBytes.length; i++) {
+      var byte = hashBytes[i];
+      if (byte < 0) byte += 256;
+      var hex = byte.toString(16);
+      if (hex.length === 1) hex = '0' + hex;
+      hash += hex;
+    }
+    return hash.substring(0, 8).toUpperCase();
+  } catch (e) {
+    return 'ERR_STAMP';
+  }
+}
+
+/**
+ * readConfigVersionsWithFallback_ - Robust version lookup for model transparency.
+ */
+function readConfigVersionsWithFallback_(ss) {
+  // 1. Try dedicated helper
+  if (typeof _m8_readConfigVersions_ === 'function') {
+    try {
+      var v = _m8_readConfigVersions_(ss);
+      if (v && (v.t1 || v.t2)) return v;
+    } catch (e) {}
+  }
+
+  // 2. Fallback: scan sheets
+  var t1 = _readVersionFromConfigSheet_(ss, 'Config_Tier1');
+  var t2 = _readVersionFromConfigSheet_(ss, 'Config_Tier2');
+
+  return { t1: t1 || 'V1.0', t2: t2 || 'V1.0' };
+}
+
+function _readVersionFromConfigSheet_(ss, sheetName) {
+  try {
+    var sh = (typeof getSheetInsensitive === 'function') ? getSheetInsensitive(ss, sheetName) : ss.getSheetByName(sheetName);
+    if (!sh) return '';
+    var data = sh.getRange(1, 1, Math.min(20, sh.getLastRow()), 2).getValues();
+    for (var i = 0; i < data.length; i++) {
+      var k = String(data[i][0] || '').toLowerCase();
+      if (k.indexOf('version') !== -1) return String(data[i][1] || '').trim();
+    }
+  } catch (e) {}
+  return '';
 }
