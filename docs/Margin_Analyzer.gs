@@ -2557,8 +2557,7 @@ function generateAccuracyReport(ssArg) {
     reports.FIRST_HALF    = gradeFirstHalf_(betSlipsData, games);
     reports.FT_OU         = gradeFTOU_(betSlipsData, games);
     reports.HIGH_QUARTER  = gradeHighQuarter_(betSlipsData, games);
-    // NOTE: BANKER omitted — no Banker bets are generated for this league.
-    //       Add reports.BANKER = gradeBankers_(...) if Bankers appear.
+    reports.BANKER        = gradeBankers_(betSlipsData, games);
 
     // ── Optional Tier2_Accuracy metrics ───────────────────────────────────
     var t2Metrics  = [];
@@ -2586,9 +2585,9 @@ function generateAccuracyReport(ssArg) {
     var reportKeys = Object.keys(reports);
     for (var rk = 0; rk < reportKeys.length; rk++) {
       var rep = reports[reportKeys[rk]];
-      totalBets   += rep.matched;
-      totalHits   += rep.hits;
-      totalMisses += rep.misses;
+      totalBets   += (rep.matched || 0);
+      totalHits   += (rep.hits || 0);
+      totalMisses += (rep.misses || 0);
     }
     var overallRate = totalBets > 0 ? (totalHits / totalBets * 100).toFixed(2) : '0.00';
 
@@ -2623,7 +2622,6 @@ function generateAccuracyReport(ssArg) {
     out.push(['Bet Type','Found','Matched','Hits','Misses','Pushes/Ties','Hit Rate','','','','','','','']);
     for (var rk2 = 0; rk2 < reportKeys.length; rk2++) {
       var rpt = reports[reportKeys[rk2]];
-      if (rpt.found === 0) continue;
       out.push(row14([
         rpt.name,
         String(rpt.found),
@@ -2639,7 +2637,6 @@ function generateAccuracyReport(ssArg) {
     // Detailed section per bet type
     for (var rk3 = 0; rk3 < reportKeys.length; rk3++) {
       var report = reports[reportKeys[rk3]];
-      if (report.found === 0) continue;
 
       out.push(blank());
       out.push(row14(['═══ ' + report.name + ' — ' + report.description + ' ═══']));
@@ -2648,18 +2645,36 @@ function generateAccuracyReport(ssArg) {
       out.push(row14(['Matched to ResultsClean:', String(report.matched)]));
       out.push(row14(['Hits:', String(report.hits)]));
       out.push(row14(['Misses:', String(report.misses)]));
-      if (report.pushes !== undefined) {
+      if (report.pushes !== undefined || report.ties !== undefined) {
         out.push(row14(['Pushes/Ties:', String(report.pushes || report.ties || 0)]));
       }
       out.push(row14(['Hit Rate (excl pushes/ties):', report.hitRate.toFixed(2) + '%']));
       out.push(blank());
 
-      if (report.details.length > 0) {
+      if (report.matched > 0) {
         out.push(row14(['--- BET DETAILS ---']));
-        out.push(buildDetailHeader_(reportKeys[rk3]));
-        for (var dd = 0; dd < report.details.length; dd++) {
-          out.push(buildDetailRow_(reportKeys[rk3], report.details[dd]));
-        }
+        out.push(['League', 'Date', 'Match', 'Pick', 'Type', 'Odds', 'Confidence', 'EV', 'Tier', 'Result', 'Score', 'Winner', 'Outcome', '']);
+        
+        report.details.forEach(function(det) {
+          out.push(row14([
+            det.league,
+            det.date,
+            det.match,
+            det.pick,
+            det.type,
+            String(det.odds),
+            String(det.confidence),
+            String(det.ev),
+            det.tier || '-',
+            det.actualResult || '-',
+            det.actualScore || '-',
+            det.actualWinner || '-',
+            det.outcome,
+            ''
+          ]));
+        });
+      } else {
+        out.push(row14(['(No matches found for grading)']));
       }
       out.push(blank());
     }

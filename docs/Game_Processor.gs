@@ -1589,7 +1589,14 @@ function t2ou_scoreOverUnderPick_(model, line, cfg, calibrator, meta) {
   var FN = 't2ou_scoreOverUnderPick_';
   meta = meta || {};
   var lineSource = String(meta.lineSource || '').toUpperCase();
-  var isLeagueStats = (lineSource.indexOf('LEAGUE_STATS') !== -1 || lineSource.indexOf('PROXY') !== -1);
+  var isLeagueStats = (
+    lineSource.indexOf('LEAGUE_STATS') !== -1 || 
+    lineSource.indexOf('PROXY') !== -1 ||
+    lineSource.indexOf('SUM') !== -1 ||
+    lineSource.indexOf('FALLBACK') !== -1 ||
+    lineSource === 'NONE' ||
+    lineSource === ''
+  );
 
   // ----- Controls -----
   var verbose = (typeof T2OU_VERBOSE !== 'undefined') ? !!T2OU_VERBOSE : false;
@@ -1797,7 +1804,7 @@ function t2ou_scoreOverUnderPick_(model, line, cfg, calibrator, meta) {
 
   // ----- STEP 4: SHRINKAGE -----
   var sampleRatio = _elite_clamp(samples / confScale, 0, 1);
-  var shrink = 0.35 + 0.65 * sampleRatio;
+  var shrink = 0.5 + 0.5 * sampleRatio;
 
   var pOverCond = _elite_clamp(0.5 + (pOverCondRaw - 0.5) * shrink, 0, 1);
   var pUnderCond = _elite_clamp(0.5 + (pUnderCondRaw - 0.5) * shrink, 0, 1);

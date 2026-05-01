@@ -2615,7 +2615,7 @@ function predictFTOverUnder(game, stats, config) {
     var calibrator = null;
 
     try {
-      var scored = t2ou_scoreOverUnderPick_(model, ftLine, ouCfg, calibrator);
+      var scored = t2ou_scoreOverUnderPick_(model, ftLine, ouCfg, calibrator, ctx);
       if (!scored) return skipResult('Scorer returned null', ctx);
 
       var dir = extractDirection(scored, expectedTotal, ftLine);
