@@ -2945,7 +2945,9 @@ function loadBetSlipsComplete_(ss) {
       confidence: getColValue_(row, currentHMap, ['confidence', 'conf', 'confidence_pct', 'confidencepct']),
       ev:         getColValue_(row, currentHMap, ['ev', 'expectedvalue']),
       tier:       getColValue_(row, currentHMap, ['tier', 'tier_code', 'tiercode']),
-      period:     getColValue_(row, currentHMap, ['period', 'half', 'qtr', 'quarter'])
+      period:     getColValue_(row, currentHMap, ['period', 'half', 'qtr', 'quarter']),
+      stamp:      getColValue_(row, currentHMap, ['config_stamp_id', 'configstampid', 'stamp']),
+      lineSource: getColValue_(row, currentHMap, ['book_line_source', 'booklinesource', 'source'])
     };
     
     result.rows.push(rowData);

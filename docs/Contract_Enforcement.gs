@@ -3403,15 +3403,11 @@ function _normalizeSelectionFields_(bet) {
     if (!bet.selectionTeam) bet.selectionTeam = bet.selectionSide || '';
   }
 
-  // --- Highest quarter (your output shows Market=SNIPER, Period=Q2, text="Highest Q: Q2")
-  // If you have a dedicated market name for this internally, add it too.
-  if (market === 'SNIPER') {
-    if (text.toUpperCase().indexOf('HIGHEST') !== -1) {
-      if (!bet.selectionSide) bet.selectionSide = period;  // Q2
-      if (!bet.selectionTeam) bet.selectionTeam = period;  // Q2
-      // Selection_Line should be same as Selection_Side
-      bet.selectionLine = period;
-    }
+  // --- Highest scoring quarter: Normalize for Assayer consumption
+  if (market === 'SNIPER' && text.toUpperCase().indexOf('HIGHEST') !== -1) {
+    bet.selectionSide = period || 'Q1';
+    bet.selectionTeam = 'MATCH_TOTAL';
+    bet.selectionLine = '-'; // No line for highest scoring quarter bets
   }
 
   // --- BANKER and ROBBER: fill Selection_Line with 1 (HOME) or 2 (AWAY)
@@ -3583,7 +3579,7 @@ function _formatBetSlipRow_(pick, market, period, cfgBundle, slipIndex,
     acc,
     typeLabel || 'M8_ACCUMULATOR',
     (cfgBundle && cfgBundle.stamp) || '', 
-    (pick && (pick.lineSource || pick.source)) || ''
+    (pick && (pick.lineSource || pick.source)) || 'DERIVED'
   ];
 }
 
@@ -3611,7 +3607,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
 
   // Clear sheet before writing (preserving headers)
   if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(23, sheet.getLastColumn())).clearContent();
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 25).clearContent();
   }
   var lastRowBefore = sheet.getLastRow();
   try { sheet.getRange('A:Y').setNumberFormat('@'); } catch (eFmt) {}
@@ -3940,6 +3936,63 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
 
   Logger.log('[' + fn + '] Bet_Slips appended from row ' + writeStart + ': ' + output.length +
     ' rows, ' + totalPicks + ' picks, slipSeq=' + slipSeq);
+}
+
+
+/**
+ * auditBetSlipsOutput — Forensic audit of the Bet_Slips sheet
+ * Confirms 25-column alignment, stamp placement, and source module validity.
+ */
+function auditBetSlipsOutput() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Bet_Slips');
+  if (!sheet) {
+    Logger.log('[AUDIT] FAIL: Bet_Slips sheet not found.');
+    return;
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var lastCol = sheet.getLastColumn();
+
+  Logger.log('[AUDIT] Sheet Columns: ' + lastCol + ' (Expected: 25)');
+  if (lastCol !== 25) {
+    Logger.log('[AUDIT] WARNING: Column mismatch! Ghost columns detected.');
+  }
+
+  var issues = 0;
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    var market = String(row[7] || '');
+    var stamp = String(row[23] || '');
+    var source = String(row[24] || '');
+
+    // Skip empty/banner rows
+    if (!market || market.indexOf('──') !== -1) continue;
+
+    if (stamp.indexOf('CFG_') !== 0) {
+      Logger.log('[AUDIT] Row ' + (r+1) + ': Missing/Invalid Config_Stamp_ID (' + stamp + ')');
+      issues++;
+    }
+
+    if (!source) {
+      Logger.log('[AUDIT] Row ' + (r+1) + ': Missing Book_Line_Source');
+      issues++;
+    }
+
+    if (row.length > 25 && String(row[25] || '').trim() !== '') {
+      Logger.log('[AUDIT] Row ' + (r+1) + ': Leakage in Column 26: ' + row[25]);
+      issues++;
+    }
+  }
+
+  if (issues === 0) {
+    Logger.log('[AUDIT] SUCCESS: All rows aligned with 25-column forensic contract.');
+    ss.toast('Forensic Audit: SUCCESS (25-col alignment OK)', 'Ma Golide', 5);
+  } else {
+    Logger.log('[AUDIT] FAILED: ' + issues + ' integrity issues found.');
+    ss.toast('Forensic Audit: FAILED (' + issues + ' issues)', 'Ma Golide', 10);
+  }
 }
 
 

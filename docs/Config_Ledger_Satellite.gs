@@ -33,9 +33,18 @@ var ConfigLedger_Satellite = {
       var stampId = this._deriveStampId(cfg);
       this._ensureLedgerRow(sheet.getParent(), stampId, cfg);
       var stampCol = this._findOrCreateStampColumn(sheet);
+      
+      var data = sheet.getRange(startRow, 1, count, 1).getValues();
       var values = [];
       for (var i = 0; i < count; i++) {
-        values.push([stampId]);
+        var rowText = String(data[i][0] || '');
+        // SKIP if it looks like a header, separator, or banner
+        if (rowText.indexOf('──') !== -1 || rowText.indexOf('Bet_Record_ID') !== -1 || 
+            rowText.indexOf('Ma Golide') !== -1 || rowText === '') {
+          values.push([sheet.getRange(startRow + i, stampCol).getValue()]); // preserve existing
+        } else {
+          values.push([stampId]);
+        }
       }
       sheet.getRange(startRow, stampCol, count, 1).setValues(values);
       return stampId;
@@ -215,15 +224,25 @@ var ConfigLedger_Satellite = {
   _findOrCreateStampColumn: function (sheet) {
     var lastCol = sheet.getLastColumn();
     var headers = sheet.getRange(1, 1, 1, Math.max(lastCol, 1)).getValues()[0];
-    var i;
-    for (i = 0; i < headers.length; i++) {
-      if (String(headers[i]).toLowerCase().replace(/[\s_]/g, "") === "configstamp") {
+    
+    // Primary search: exact match or variants of Config_Stamp_ID (Column 24)
+    for (var i = 0; i < headers.length; i++) {
+      var h = String(headers[i]).toLowerCase().replace(/[\s_]/g, "");
+      if (h === "configstampid" || h === "configstamp") {
         return i + 1;
       }
     }
-    var newCol = headers.length + 1;
+
+    // Secondary: If this looks like a 25-column contract, force index 24
+    if (headers.length >= 24) {
+      var h24 = String(headers[23] || '').toLowerCase().replace(/[\s_]/g, "");
+      if (h24.indexOf('stamp') !== -1) return 24;
+    }
+
+    // Fallback: Create new column
+    var newCol = Math.max(headers.length + 1, 24);
     sheet.getRange(1, newCol)
-      .setValue("config_stamp")
+      .setValue("Config_Stamp_ID")
       .setFontWeight("bold")
       .setBackground("#1a1a2e")
       .setFontColor("#FFD700");
