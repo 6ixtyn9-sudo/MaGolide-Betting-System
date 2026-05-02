@@ -3410,12 +3410,9 @@ function _normalizeSelectionFields_(bet) {
     bet.selectionLine = '-'; // No line for highest scoring quarter bets
   }
 
-  // --- BANKER and ROBBER: fill Selection_Line with 1 (HOME) or 2 (AWAY)
+  // --- BANKER and ROBBER: Standardize to Moneyline (ML)
   if (market === 'BANKER' || market === 'ROBBER') {
-    if (!bet.selectionLine) {
-      if (bet.selectionSide === 'HOME') bet.selectionLine = '1';
-      else if (bet.selectionSide === 'AWAY') bet.selectionLine = '2';
-    }
+    bet.selectionLine = 'ML';
   }
 
   return bet;
@@ -3867,7 +3864,14 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
       var sConf = parseConf(s.confidence);
       var sMkt = slipMarketFromSniper_(s);
       var sPer = slipPeriodFromSniper_(s);
-      var sMod = (sMkt === 'SNIPER_OU') ? 'M8_SNIPER_OU' : (sMkt === 'SNIPER_MARGIN' ? 'M8_SNIPER_MARGIN' : 'M8_SNIPER');
+      
+      // Granular Module Labeling
+      var sText = String(s.selectionText || s.pick || '').toUpperCase();
+      var sMod = 'M8_SNIPER';
+      if (sText.indexOf('HIGHEST') !== -1) sMod = 'M10_HIGHEST_Q';
+      else if (sMkt === 'SNIPER_OU') sMod = 'M6_SNIPER_OU';
+      else if (sMkt === 'SNIPER_MARGIN') sMod = 'M8_SNIPER_MARGIN';
+
       _pushRow_(s, sMkt, sPer, sMod, sConf);
     }
   } else {
@@ -3929,10 +3933,7 @@ function _writeBetSlipsEnhanced(ss, picks, config, tierCuts, enhancementsEnabled
     }
   }
 
-  // Config stamp entire run efficiently
-  if (typeof ConfigLedger_Satellite !== 'undefined' && ConfigLedger_Satellite.stampBatch) {
-    ConfigLedger_Satellite.stampBatch(sheet, writeStart, output.length);
-  }
+  // Removed redundant stampBatch (slop reduction) — _formatBetSlipRow_ handles column 24
 
   Logger.log('[' + fn + '] Bet_Slips appended from row ' + writeStart + ': ' + output.length +
     ' rows, ' + totalPicks + ' picks, slipSeq=' + slipSeq);
@@ -3966,9 +3967,16 @@ function auditBetSlipsOutput() {
     var market = String(row[7] || '');
     var stamp = String(row[23] || '');
     var source = String(row[24] || '');
+    var line = String(row[10] || '');
 
     // Skip empty/banner rows
     if (!market || market.indexOf('──') !== -1) continue;
+
+    // Banker/Robber ML check
+    if ((market === 'BANKER' || market === 'ROBBER') && line !== 'ML') {
+      Logger.log('[AUDIT] Row ' + (r+1) + ': Banker/Robber missing ML (Found: ' + line + ')');
+      issues++;
+    }
 
     if (stamp.indexOf('CFG_') !== 0) {
       Logger.log('[AUDIT] Row ' + (r+1) + ': Missing/Invalid Config_Stamp_ID (' + stamp + ')');
