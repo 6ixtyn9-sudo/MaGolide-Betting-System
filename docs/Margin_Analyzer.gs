@@ -2939,7 +2939,7 @@ function loadBetSlipsComplete_(ss) {
       league:     getColValue_(row, currentHMap, ['league', 'comp']),
       date:       getColValue_(row, currentHMap, ['date', 'gamedate']),
       time:       getColValue_(row, currentHMap, ['time']),
-      type:       getColValue_(row, currentHMap, ['type', 'signal', 'signaltype', 'market']),
+      type:       getColValue_(row, currentHMap, ['type', 'signal', 'signaltype', 'market', 'source_module', 'sourcemodule']),
       pick:       getColValue_(row, currentHMap, ['pick', 'selection', 'bet', 'selection_text', 'selectiontext']),
       odds:       getColValue_(row, currentHMap, ['odds', 'price']),
       confidence: getColValue_(row, currentHMap, ['confidence', 'conf', 'confidence_pct', 'confidencepct']),
@@ -3054,8 +3054,9 @@ function gradeSniperMargin_(betSlipsData, games) {
       ev: bet.ev || '-',
       tier: bet.tier,
       quarter: quarter,
-      actualQScore: qScore.home + ' - ' + qScore.away,
-      actualSide: actualSide,
+      actualResult: actualSide,
+      actualScore: qScore.home + ' - ' + qScore.away,
+      actualWinner: actualSide,
       outcome: outcome === 'HIT' ? '✅ HIT' : (outcome === 'TIE' ? '🟡 TIE' : '❌ MISS')
     });
   });
@@ -3204,7 +3205,9 @@ function gradeSniperOU_(betSlipsData, games) {
       quarter:      quarter,
       line:         line,
       actualTotal:  actualTotal,
-      actualResult: actualResult,          // BUG-3 FIX
+      actualResult: actualResult,
+      actualScore:  qScore.home + ' - ' + qScore.away,
+      actualWinner: actualResult,
       outcome:      outcome === 'HIT'  ? '✅ HIT'  :
                     outcome === 'PUSH' ? '🟡 PUSH' : '❌ MISS'
     });
@@ -3275,6 +3278,7 @@ function gradeBankers_(betSlipsData, games) {
       ev: bet.ev || '-',
       tier: bet.tier,
       predictedWinner: predicted === 'HOME' ? game.home : game.away,
+      actualResult: game.ftWinner === 'HOME' ? game.home : game.away,
       actualScore: game.ftHome + ' - ' + game.ftAway,
       actualWinner: game.ftWinner === 'HOME' ? game.home : game.away,
       outcome: outcome === 'HIT' ? '✅ HIT' : '❌ MISS'
@@ -3345,6 +3349,7 @@ function gradeRobbers_(betSlipsData, games) {
       ev: bet.ev || '-',
       tier: bet.tier,
       predictedWinner: predicted === 'HOME' ? game.home : game.away,
+      actualResult: game.ftWinner === 'HOME' ? game.home : game.away,
       actualScore: game.ftHome + ' - ' + game.ftAway,
       actualWinner: game.ftWinner === 'HOME' ? game.home : game.away,
       outcome: outcome === 'HIT' ? '✅ HIT' : '❌ MISS'
@@ -3421,8 +3426,9 @@ function gradeFirstHalf_(betSlipsData, games) {
       ev: bet.ev || '-',
       tier: bet.tier,
       predicted: predicted,
-      actualHalfScore: game.fhHome + ' - ' + game.fhAway,
-      actual: game.fhWinner,
+      actualResult: game.fhWinner,
+      actualScore: game.fhHome + ' - ' + game.fhAway,
+      actualWinner: game.fhWinner === '1' ? game.home : (game.fhWinner === '2' ? game.away : 'DRAW'),
       outcome: outcome === 'HIT' ? '✅ HIT' : '❌ MISS'
     });
   });
@@ -3503,6 +3509,8 @@ function gradeFTOU_(betSlipsData, games) {
       line: line,
       actualTotal: game.ftTotal,
       actualResult: actualResult,
+      actualScore: game.ftHome + ' - ' + game.ftAway,
+      actualWinner: actualResult,
       outcome: outcome === 'HIT' ? '✅ HIT' : (outcome === 'PUSH' ? '🟡 PUSH' : '❌ MISS')
     });
   });
@@ -3571,11 +3579,9 @@ function gradeHighQuarter_(betSlipsData, games) {
       ev: bet.ev || '-',
       tier: bet.tier,
       predicted: predicted,
-      q1Total: game.qScores.Q1.home + game.qScores.Q1.away,
-      q2Total: game.qScores.Q2.home + game.qScores.Q2.away,
-      q3Total: game.qScores.Q3.home + game.qScores.Q3.away,
-      q4Total: game.qScores.Q4.home + game.qScores.Q4.away,
-      actualHighest: game.highestQ + ' (' + game.highestTotal + ')',
+      actualResult: predicted,
+      actualScore: game.highestTotal,
+      actualWinner: game.highestQ + ' (' + game.highestTotal + ')',
       outcome: outcome === 'HIT' ? '✅ HIT' : '❌ MISS'
     });
   });
