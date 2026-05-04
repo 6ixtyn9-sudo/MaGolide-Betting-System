@@ -2827,10 +2827,10 @@ function setupOneTimeTrigger() {
   // ── Create exactly ONE fresh trigger ─────────────────────────────────────
   ScriptApp.newTrigger('runTheWholeShebang')
     .timeBased()
-    .after(60000) // 1 minute
+    .after(30000) // 30 seconds
     .create();
 
-  Logger.log('[setupOneTimeTrigger] ✅ Single trigger created. runTheWholeShebang fires in ~1 minute.');
+  Logger.log('[setupOneTimeTrigger] ✅ Single trigger created. runTheWholeShebang fires in ~30 seconds.');
 }
 
 
