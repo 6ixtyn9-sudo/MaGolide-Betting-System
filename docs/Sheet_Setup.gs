@@ -2789,6 +2789,38 @@ function runFTOUPredictions() {
 
 
 /**
+ * HARDENED REPLACEMENT for setupOneTimeTrigger()
+ *
+ * Drop this into Sheet_Setup.gs (or wherever setupOneTimeTrigger lives)
+ * to prevent the pile-up from ever happening again.
+ *
+ * Key change: it ALWAYS wipes existing runTheWholeShebang triggers before
+ * creating a new one — so no matter how many times the syncer calls this,
+ * only ONE trigger exists at a time.
+ */
+function setupOneTimeTrigger() {
+  // ── Guard: delete any existing triggers for runTheWholeShebang ──────────
+  var existing = ScriptApp.getProjectTriggers().filter(function(t) {
+    return t.getHandlerFunction() === 'runTheWholeShebang';
+  });
+  existing.forEach(function(t) {
+    ScriptApp.deleteTrigger(t);
+  });
+  if (existing.length > 0) {
+    Logger.log('[setupOneTimeTrigger] Cleared ' + existing.length + ' existing trigger(s) before creating new one.');
+  }
+
+  // ── Create exactly ONE fresh trigger ─────────────────────────────────────
+  ScriptApp.newTrigger('runTheWholeShebang')
+    .timeBased()
+    .after(60000) // 1 minute
+    .create();
+
+  Logger.log('[setupOneTimeTrigger] ✅ Single trigger created. runTheWholeShebang fires in ~1 minute.');
+}
+
+
+/**
  * ======================================================================
  * THE PRESIDENTIAL BUTTON: runTheWholeShebang (DAILY / NO TUNING)
  * ======================================================================
@@ -2838,18 +2870,30 @@ function _shebang_clearResumeTrigger_() {
 }
 
 /**
- * Save the next stage to resume from and schedule a 1-minute trigger
- * that will call runTheWholeShebang_Resume.
+ * HARDENED REPLACEMENT for _shebang_scheduleResume_()
+ *
+ * Same principle: only ONE resume trigger at a time.
+ * Prevents resume triggers from piling up if the 6-min wall is hit repeatedly.
  */
 function _shebang_scheduleResume_(nextStage) {
-  _shebang_clearResumeTrigger_();
+  // Clear any existing resume triggers
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'runTheWholeShebang' || t.getHandlerFunction() === 'runTheWholeShebang_Resume') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  // Schedule exactly ONE resume
   var trigger = ScriptApp.newTrigger('runTheWholeShebang_Resume')
     .timeBased()
-    .after(60 * 1000)
+    .after(60000)
     .create();
+
   var props = PropertiesService.getScriptProperties();
   props.setProperty('SHEBANG_TRIGGER_ID', trigger.getUniqueId());
   props.setProperty('SHEBANG_RESUME_STAGE', nextStage);
+
+  Logger.log('[_shebang_scheduleResume_] ✅ Resume trigger set for ~1 minute from now.');
 }
 function _runWholeShebang_(opts) {
   opts = opts || {};
