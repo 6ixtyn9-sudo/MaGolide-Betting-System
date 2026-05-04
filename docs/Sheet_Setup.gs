@@ -28,20 +28,6 @@
  *     Call this once per file to build the Ma Golide "stadium".
  */
 /**
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * AUTO-STARTUP
- * ═══════════════════════════════════════════════════════════════════════════════
- */
-function onOpen() {
-  // Auto-setup: runs every time the sheet is opened
-  // Safe to call multiple times — setupOneTimeTrigger is already hardened
-  try {
-    setupOneTimeTrigger();
-  } catch(e) {
-    Logger.log('[onOpen] setupOneTimeTrigger failed: ' + e.message);
-  }
-}
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -2595,6 +2581,13 @@ if (typeof _mg_getUpcomingGames_ !== 'function') {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function onOpen(e) {
+  // ── Auto-startup: ensure the run trigger is armed ──
+  try {
+    setupOneTimeTrigger();
+  } catch(err) {
+    Logger.log('[onOpen] setupOneTimeTrigger failed: ' + err.message);
+  }
+
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ma Golide')
     .addItem('RUN THE WHOLE SHEBANG', 'runTheWholeShebang')
